@@ -1,0 +1,41 @@
+--- ClinicalWorkspace_Batch13.tsx
++++ ClinicalWorkspace_Batch14.tsx
+@@ -1,6 +1,6 @@
+ import React, { useEffect, useMemo, useState } from "react";
+ import { getPatientProfile, searchPatients, type Patient, type PatientProfile } from "./api/patients";
+-import PatientAvatar from "./components/ui/PatientAvatar";
++import PatientAvatar from "./components/PatientAvatar";
+ import {
+   completeAssessment,
+   createAssessment,
+@@ -814,22 +814,15 @@
+             </select>
+           </div>
+         </div>
++        {patients.length > 0 && (
++          <div style={{ marginTop: 10, color: "#64748b", fontSize: 12 }}>
++            {patients.length} patient{patients.length === 1 ? "" : "s"} available in the selector below. Choose a name to open the clinical workspace.
++          </div>
++        )}
+         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 12, marginTop: 12 }}>
+-          <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void search(); }} placeholder="Filter the patient list by name or patient number..." style={input} />
+-          <button type="button" onClick={() => void search()} disabled={loading} style={secondaryButton}>{loading ? "Refreshing..." : "Refresh list"}</button>
+-        </div>
+-        {patients.length > 0 && (
+-          <div style={{ display: "grid", gap: 8, marginTop: 14 }}>
+-            {patients.map((patient) => (
+-              <button key={patient.id} type="button" onClick={() => void selectPatient(patient)} style={{ textAlign: "left", border: "1px solid #e2e8f0", borderRadius: 13, padding: 13, background: selectedPatient?.id === patient.id ? "#f0fdfa" : "#fff", cursor: "pointer" }}>
+-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+-                  <div><strong style={{ color: "#102a43" }}>{patient.first_name} {patient.last_name}</strong><div style={{ color: "#627d98", fontSize: 12, marginTop: 3 }}>{patient.patient_number} · {patient.district || "Location not recorded"}</div></div>
+-                  <span style={statusStyle(patient.status)}>{humanize(patient.status)}</span>
+-                </div>
+-              </button>
+-            ))}
+-          </div>
+-        )}
++          <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void search(); }} placeholder="Search by patient name or patient number..." style={input} />
++          <button type="button" onClick={() => void search()} disabled={loading} style={secondaryButton}>{loading ? "Searching..." : "Search patients"}</button>
++        </div>
+       </section>
+ 
+       {!selectedPatient ? (

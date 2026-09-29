@@ -1,0 +1,243 @@
+--- /mnt/data/batch7_package/ClinicalWorkspace_Batch6_BASE.tsx	2026-09-28 22:04:19.484922383 +0000
++++ /mnt/data/batch7_work/ClinicalWorkspace.tsx	2026-09-28 22:03:27.934696530 +0000
+@@ -1,5 +1,6 @@
+ import React, { useEffect, useMemo, useState } from "react";
+ import { getPatientProfile, searchPatients, type Patient, type PatientProfile } from "./api/patients";
++import PatientAvatar from "./components/PatientAvatar";
+ import {
+   completeAssessment,
+   createAssessment,
+@@ -130,6 +131,202 @@
+   { key: "assessments", title: "Assessments", icon: "✓", description: "Assessment sessions" },
+ ];
+ 
++
++function calculateAge(dateOfBirth: string | null | undefined): number | null {
++  if (!dateOfBirth) return null;
++  const dob = new Date(dateOfBirth);
++  if (Number.isNaN(dob.getTime())) return null;
++  const today = new Date();
++  let age = today.getFullYear() - dob.getFullYear();
++  const monthDelta = today.getMonth() - dob.getMonth();
++  if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < dob.getDate())) age -= 1;
++  return age >= 0 && age < 130 ? age : null;
++}
++
++function getDateValue(value: unknown): string | null {
++  if (typeof value !== "string" && !(value instanceof Date)) return null;
++  const date = value instanceof Date ? value : new Date(value);
++  return Number.isNaN(date.getTime()) ? null : date.toISOString();
++}
++
++function getObjectDate(value: unknown, keys: string[]): string | null {
++  if (!value || typeof value !== "object") return null;
++  const record = value as Record<string, unknown>;
++  for (const key of keys) {
++    const candidate = getDateValue(record[key]);
++    if (candidate) return candidate;
++  }
++  return null;
++}
++
++type PatientTimelineEvent = {
++  id: string;
++  kind: "assessment" | "recommendation" | "report" | "review";
++  title: string;
++  description: string;
++  status?: string | null;
++  date?: string | null;
++};
++
++function PatientTimeline({
++  assessments,
++  recommendations,
++  reports,
++  reviews,
++}: {
++  assessments: AssessmentSession[];
++  recommendations: Recommendation[];
++  reports: Report[];
++  reviews: ClinicianReview[];
++}) {
++  const events: PatientTimelineEvent[] = [
++    ...assessments.map((assessment) => ({
++      id: `assessment-${assessment.id}`,
++      kind: "assessment" as const,
++      title: `Assessment ${assessment.id}`,
++      description: `${humanize(assessment.assessment_type)} assessment${assessment.summary ? ` · ${assessment.summary}` : ""}`,
++      status: assessment.status,
++      date: getObjectDate(assessment, ["completed_at", "started_at"]),
++    })),
++    ...recommendations.map((recommendation) => ({
++      id: `recommendation-${recommendation.id}`,
++      kind: "recommendation" as const,
++      title: recommendation.title,
++      description: recommendation.recommendation_text || "Recommendation recorded in the selected assessment.",
++      status: recommendation.status,
++      date: getObjectDate(recommendation, ["created_at", "updated_at"]),
++    })),
++    ...reports.map((report) => ({
++      id: `report-${report.id}`,
++      kind: "report" as const,
++      title: report.report_title,
++      description: report.executive_summary || `Medical report version ${report.version}.`,
++      status: report.status,
++      date: getObjectDate(report, ["generated_at", "created_at", "updated_at"]),
++    })),
++    ...reviews.map((review) => ({
++      id: `review-${review.id}`,
++      kind: "review" as const,
++      title: "Clinician review",
++      description: review.report_id ? `Report #${review.report_id}` : review.recommendation_id ? `Recommendation #${review.recommendation_id}` : "Clinical review activity",
++      status: review.review_status,
++      date: getObjectDate(review, ["reviewed_at", "created_at", "updated_at"]),
++    })),
++  ]
++    .sort((a, b) => {
++      const left = a.date ? new Date(a.date).getTime() : 0;
++      const right = b.date ? new Date(b.date).getTime() : 0;
++      return right - left;
++    })
++    .slice(0, 10);
++
++  const iconByKind: Record<PatientTimelineEvent["kind"], string> = {
++    assessment: "✓",
++    recommendation: "✦",
++    report: "▤",
++    review: "◉",
++  };
++
++  if (!events.length) {
++    return (
++      <div style={{ marginTop: 14, padding: 16, borderRadius: 14, border: "1px dashed #cbd5e1", background: "#fbfdff", color: "#64748b", fontSize: 13 }}>
++        No timeline activity is available yet for this patient.
++      </div>
++    );
++  }
++
++  return (
++    <div className="care-patient-timeline" style={{ marginTop: 16 }}>
++      {events.map((event, index) => (
++        <div key={event.id} className="care-timeline-item" style={{ display: "grid", gridTemplateColumns: "34px minmax(0,1fr) auto", gap: 12, alignItems: "start", position: "relative", paddingBottom: index === events.length - 1 ? 0 : 16 }}>
++          <div style={{ width: 34, height: 34, borderRadius: 11, display: "grid", placeItems: "center", background: event.kind === "report" ? "#eff6ff" : event.kind === "review" ? "#f5f3ff" : event.kind === "recommendation" ? "#fff7ed" : "#ecfeff", color: event.kind === "report" ? "#2563eb" : event.kind === "review" ? "#7c3aed" : event.kind === "recommendation" ? "#c2410c" : "#0f766e", fontWeight: 900, border: "1px solid rgba(148,163,184,0.16)" }}>{iconByKind[event.kind]}</div>
++          <div style={{ minWidth: 0 }}>
++            <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
++              <strong style={{ color: "#102a43", fontSize: 13 }}>{event.title}</strong>
++              {event.status && <span style={statusStyle(event.status)}>{humanize(event.status)}</span>}
++            </div>
++            <div style={{ marginTop: 4, color: "#627d98", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{event.description}</div>
++          </div>
++          <span style={{ color: "#94a3b8", fontSize: 11, whiteSpace: "nowrap", paddingTop: 2 }}>{event.date ? new Date(event.date).toLocaleDateString() : "Date not recorded"}</span>
++          {index !== events.length - 1 && <span aria-hidden="true" style={{ position: "absolute", left: 16, top: 34, bottom: 0, width: 2, background: "linear-gradient(180deg, #cbd5e1, rgba(203,213,225,0.15))", borderRadius: 2 }} />}
++        </div>
++      ))}
++      {events.length >= 10 && <div style={{ marginTop: 14, color: "#64748b", fontSize: 11 }}>Showing the 10 most recent documented workspace events.</div>}
++    </div>
++  );
++}
++
++function Patient360Summary({
++  patient,
++  profile,
++  assessments,
++  recommendations,
++  reports,
++  risk,
++  selectedAssessment,
++}: {
++  patient: Patient;
++  profile: PatientProfile | null;
++  assessments: AssessmentSession[];
++  recommendations: Recommendation[];
++  reports: Report[];
++  risk: RiskAssessmentResult | null;
++  selectedAssessment: AssessmentSession | null;
++}) {
++  const age = calculateAge(patient.date_of_birth);
++  const activeAllergyCount = profile?.allergies.length ?? 0;
++  const medicationCount = profile?.medications.length ?? 0;
++  const vitalCount = profile?.vital_signs.length ?? 0;
++  const riskLabel = risk ? humanize(risk.risk_score.risk_level) : "Not run";
++
++  return (
++    <section className="care-patient-360" style={{ ...panel, background: "linear-gradient(145deg, #ffffff 0%, #f6fbff 55%, #effcfb 100%)", overflow: "hidden", position: "relative" }}>
++      <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", right: -80, top: -95, background: "rgba(56,189,248,0.08)", pointerEvents: "none" }} />
++      <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "center", flexWrap: "wrap", position: "relative", zIndex: 1 }}>
++        <div>
++          <div style={{ color: "#0f766e", fontSize: 11, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.09em" }}>Patient 360°</div>
++          <h3 style={{ margin: "4px 0 5px", color: "#102a43", fontSize: 20 }}>At-a-glance clinical context</h3>
++          <p style={{ margin: 0, color: "#627d98", fontSize: 12 }}>A compact overview assembled from the existing patient record and selected assessment.</p>
++        </div>
++        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
++          <PatientAvatar patientId={patient.id} firstName={patient.first_name} lastName={patient.last_name} size={48} radius={15} />
++          <div>
++            <strong style={{ display: "block", color: "#102a43", fontSize: 13 }}>{patient.first_name} {patient.last_name}</strong>
++            <span style={{ color: "#64748b", fontSize: 11 }}>{patient.patient_number}</span>
++          </div>
++        </div>
++      </div>
++
++      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))", gap: 10, marginTop: 16 }}>
++        {[
++          { label: "Age / Sex", value: `${age ?? "—"} · ${patient.sex ? humanize(patient.sex) : "Not recorded"}`, tone: "blue" },
++          { label: "Risk", value: riskLabel, tone: risk?.risk_score.risk_level === "high" ? "rose" : "teal" },
++          { label: "Assessments", value: assessments.length, tone: "teal" },
++          { label: "Reports", value: reports.length, tone: "blue" },
++          { label: "Recommendations", value: recommendations.length, tone: "amber" },
++          { label: "Allergies / Meds", value: `${activeAllergyCount} / ${medicationCount}`, tone: "rose" },
++        ].map((item) => (
++          <div key={item.label} className="care-360-stat" style={{ padding: 12, borderRadius: 13, background: "rgba(255,255,255,0.82)", border: "1px solid rgba(148,163,184,0.15)", boxShadow: "0 6px 18px rgba(15,23,42,0.045)" }}>
++            <div style={{ color: "#64748b", fontSize: 10, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.06em" }}>{item.label}</div>
++            <strong style={{ display: "block", marginTop: 6, color: item.tone === "rose" ? "#be123c" : item.tone === "amber" ? "#c2410c" : item.tone === "blue" ? "#2563eb" : "#0f766e", fontSize: 17, lineHeight: 1.2 }}>{item.value}</strong>
++          </div>
++        ))}
++      </div>
++
++      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10, marginTop: 12 }}>
++        <div style={{ padding: 12, borderRadius: 13, background: "rgba(248,250,252,0.88)", border: "1px solid rgba(148,163,184,0.13)" }}>
++          <div style={{ color: "#64748b", fontSize: 10, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.06em" }}>Current assessment</div>
++          <strong style={{ display: "block", marginTop: 5, color: "#102a43", fontSize: 13 }}>{selectedAssessment ? `Assessment ${selectedAssessment.id} · ${humanize(selectedAssessment.status)}` : "No assessment selected"}</strong>
++        </div>
++        <div style={{ padding: 12, borderRadius: 13, background: "rgba(248,250,252,0.88)", border: "1px solid rgba(148,163,184,0.13)" }}>
++          <div style={{ color: "#64748b", fontSize: 10, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.06em" }}>Latest clinical data</div>
++          <strong style={{ display: "block", marginTop: 5, color: "#102a43", fontSize: 13 }}>{vitalCount} vital record{vitalCount === 1 ? "" : "s"} · {patient.district || "Location not recorded"}</strong>
++        </div>
++      </div>
++    </section>
++  );
++}
++
+ function formatRecordLabel(value: string) {
+   return value
+     .replace(/_/g, " ")
+@@ -580,7 +777,29 @@
+             )}
+           </section>
+ 
+-          <section style={{ ...panel, background: "linear-gradient(135deg, #ffffff 0%, #f8fcff 100%)" }}>
++          <Patient360Summary
++            patient={selectedPatient}
++            profile={patientProfile}
++            assessments={assessments}
++            recommendations={recommendations}
++            reports={reports}
++            risk={risk}
++            selectedAssessment={selectedAssessment}
++          />
++
++          <section style={{ ...panel, background: "linear-gradient(135deg, #ffffff 0%, #f7fbff 100%)" }}>
++            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
++              <div>
++                <div style={{ color: "#0f766e", fontSize: 11, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.08em" }}>Longitudinal view</div>
++                <h3 style={{ margin: "4px 0 5px", color: "#102a43", fontSize: 21 }}>Patient timeline</h3>
++                <p style={{ margin: 0, color: "#627d98", fontSize: 12 }}>Recent documented assessments and activity across the selected clinical workspace.</p>
++              </div>
++              <span style={{ ...statusStyle("completed"), background: "#eff6ff", color: "#2563eb" }}>{Math.min(10, assessments.length + recommendations.length + reports.length + reviews.length)} shown</span>
++            </div>
++            <PatientTimeline assessments={assessments} recommendations={recommendations} reports={reports} reviews={reviews} />
++          </section>
++
++          <section id="care-clinical-record" style={{ ...panel, background: "linear-gradient(135deg, #ffffff 0%, #f8fcff 100%)" }}>
+             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+               <div>
+                 <div style={{ color: "#0f766e", fontSize: 11, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.08em" }}>Patient clinical record</div>

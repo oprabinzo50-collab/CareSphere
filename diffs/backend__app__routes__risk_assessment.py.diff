@@ -1,0 +1,82 @@
+--- baseline/backend/app/routes/risk_assessment.py
+
++++ batch19/backend/app/routes/risk_assessment.py
+
+@@ -9,6 +9,7 @@
+
+ from app.models.reports import Report
+ from app.models.user import User
+ from app.security.permissions import require_roles
++from app.utils.audit import create_audit_log
+ 
+ from app.services.report_generator import (
+     generate_assessment_report,
+@@ -423,6 +424,7 @@
+
+ ):
+     allowed_statuses = {
+         "pending",
++        "reviewed",
+         "approved",
+         "rejected",
+         "completed",
+@@ -437,7 +439,7 @@
+
+             status_code=400,
+             detail=(
+                 "Invalid review status. "
+-                "Use pending, approved, rejected, "
++                "Use pending, reviewed, approved, rejected, "
+                 "or completed."
+             ),
+         )
+@@ -513,11 +515,21 @@
+
+     review.clinical_comment = clinical_comment
+     review.modification_notes = modification_notes
+ 
++    now = __import__("datetime").datetime.now(
++        __import__("datetime").timezone.utc
++    )
++    if review_status in {"reviewed", "approved", "rejected", "completed"}:
++        review.reviewed_at = now
++    review.updated_at = now
++
+     # --------------------------------------------------------
+     # Update report status
+     # --------------------------------------------------------
+ 
+-    if review_status == "approved":
++    if review_status == "reviewed":
++        report.status = "reviewed"
++
++    elif review_status == "approved":
+         report.status = "approved"
+ 
+     elif review_status == "rejected":
+@@ -537,6 +549,24 @@
+
+     )
+ 
+     # --------------------------------------------------------
++    # Audit review action
++    # --------------------------------------------------------
++
++    if review_status in {"reviewed", "approved", "rejected", "completed"}:
++        create_audit_log(
++            db=db,
++            user_id=current_user.id,
++            action="review",
++            entity_type="Report",
++            entity_id=report.id,
++            description=f"Clinician marked clinical report {review_status}",
++            log_metadata={
++                "assessment_id": assessment_id,
++                "review_status": review_status,
++            },
++        )
++
++    # --------------------------------------------------------
+     # Save
+     # --------------------------------------------------------
+ 

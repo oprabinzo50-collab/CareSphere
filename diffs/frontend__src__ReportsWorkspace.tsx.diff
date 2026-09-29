@@ -1,0 +1,271 @@
+--- baseline/frontend/src/ReportsWorkspace.tsx
+
++++ batch19/frontend/src/ReportsWorkspace.tsx
+
+@@ -13,6 +13,9 @@
+
+   releaseReportToPatient as releaseReportToPatientApi,
+   submitReportForReview,
+   updateReportReview,
++  listAdminReviewedReports,
++  deleteReport,
++  type AdminReviewedReport,
+   type AssessmentSession,
+   type ClinicianReview,
+   type Report,
+@@ -44,6 +47,16 @@
+
+   background: "#fff",
+   color: "#334e68",
+   fontWeight: 750,
++  cursor: "pointer",
++};
++
++const dangerButton: React.CSSProperties = {
++  border: "1px solid #fecaca",
++  borderRadius: 11,
++  padding: "10px 14px",
++  background: "#fff",
++  color: "#b91c1c",
++  fontWeight: 800,
+   cursor: "pointer",
+ };
+ 
+@@ -197,7 +210,7 @@
+
+     .care-report-document{border:1px solid #dbe6eb;border-radius:20px;background:#fff;box-shadow:0 18px 48px rgba(15,23,42,.07);overflow:hidden}
+     .care-report-cover{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;padding:24px;background:linear-gradient(135deg,#f0fdfa 0%,#fff 55%,#eff6ff 100%);border-bottom:1px solid #e2e8f0}
+     .care-report-cover-main{display:flex;gap:15px;align-items:center;min-width:0}.care-report-kicker,.care-report-label{color:#0f766e;font-size:10px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.care-report-cover h3{margin:3px 0 5px;color:#102a43;font-size:22px;letter-spacing:-.025em}.care-report-cover p,.care-report-status-block small{margin:0;color:#627d98;font-size:12px}.care-report-status-block{display:grid;justify-items:end;gap:7px;text-align:right}
+-    .care-report-section{padding:22px 24px;border-bottom:1px solid #edf2f5}.care-report-section:last-of-type{border-bottom:0}.care-report-section-heading{display:flex;gap:11px;align-items:flex-start;margin-bottom:15px}.care-report-section-heading>span{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#ecfeff;color:#0f766e;font-size:10px;font-weight:900}.care-report-section-heading h4{margin:0;color:#102a43;font-size:15px}.care-report-section-heading p{margin:3px 0 0;color:#78909c;font-size:11px}.care-report-patient-strip{display:grid;grid-template-columns:minmax(180px,.7fr) minmax(0,1.8fr);gap:18px}.care-report-patient-strip>div:first-child{padding:15px;border-radius:14px;background:#f8fafc}.care-report-patient-strip strong{display:block;color:#102a43;font-size:17px}.care-report-patient-strip span{display:block;margin-top:3px;color:#627d98;font-size:11px}.care-report-demographics{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}.care-report-demographics>div,.care-report-footer-grid>div{padding:11px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}.care-report-demographics small,.care-report-footer-grid small,.care-report-mini-card small{display:block;color:#64748b;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.05em}.care-report-demographics strong,.care-report-footer-grid strong{display:block;margin-top:4px;color:#102a43;font-size:12px;word-break:break-word}.care-report-callout{padding:15px;border-radius:14px}.care-report-callout p{margin:7px 0 0;color:#334e68;font-size:13px;line-height:1.7;white-space:pre-wrap}.care-report-callout-primary{background:#f8fbff;border:1px solid #dbeafe}.care-report-ai{background:linear-gradient(135deg,#ecfeff,#eff6ff);border:1px solid #bae6fd}.care-report-grid-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:12px}.care-report-mini-card{padding:13px;border:1px solid #e2e8f0;border-radius:13px;background:#fbfdff}.care-report-mini-card strong{display:block;margin-top:5px;color:#102a43;font-size:22px}.care-report-item-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.care-report-list-item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 11px;margin-top:7px;border-radius:11px;border:1px solid #e2e8f0;background:#fff;color:#334e68;font-size:12px}.care-report-empty{padding:11px 12px;margin-top:7px;border-radius:11px;background:#f8fafc;color:#94a3b8;font-size:12px}.care-report-recommendation{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;padding:14px;margin-top:9px;border-radius:13px;border:1px solid #e2e8f0;background:#fff}.care-report-recommendation strong{color:#102a43;font-size:13px}.care-report-recommendation p{margin:6px 0 0;color:#475569;font-size:12px;line-height:1.6;white-space:pre-wrap}.care-report-recommendation-meta{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.care-report-clinician-guidance{background:linear-gradient(180deg,#fcfffe,#f8fbff)}.care-report-clinician-callout{background:#f0fdfa;border:1px solid #99f6e4}.care-report-footer-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.care-report-limitations{margin:13px 0 0;color:#64748b;font-size:11px;line-height:1.6}.care-report-source{padding:0 24px 22px}.care-report-source summary{cursor:pointer;color:#0f766e;font-weight:800;font-size:11px;padding-top:3px}.care-report-source pre{margin:9px 0 0;padding:13px;border-radius:12px;background:#0f172a;color:#e2e8f0;overflow:auto;font-size:10px;line-height:1.55}@media(max-width:760px){.care-report-cover{flex-direction:column}.care-report-status-block{justify-items:start;text-align:left}.care-report-patient-strip,.care-report-item-columns,.care-report-footer-grid{grid-template-columns:1fr}.care-report-recommendation{flex-direction:column}.care-report-recommendation-meta{justify-content:flex-start}}
++    .care-report-section{padding:22px 24px;border-bottom:1px solid #edf2f5}.care-report-section:last-of-type{border-bottom:0}.care-report-section-heading{display:flex;gap:11px;align-items:flex-start;margin-bottom:15px}.care-report-section-heading>span{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#ecfeff;color:#0f766e;font-size:10px;font-weight:900}.care-report-section-heading h4{margin:0;color:#102a43;font-size:15px}.care-report-section-heading p{margin:3px 0 0;color:#78909c;font-size:11px}.care-report-patient-strip{display:grid;grid-template-columns:minmax(180px,.7fr) minmax(0,1.8fr);gap:18px}.care-report-patient-strip>div:first-child{padding:15px;border-radius:14px;background:#f8fafc}.care-report-patient-strip strong{display:block;color:#102a43;font-size:17px}.care-report-patient-strip span{display:block;margin-top:3px;color:#627d98;font-size:11px}.care-report-demographics{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}.care-report-demographics>div,.care-report-footer-grid>div{padding:11px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}.care-report-demographics small,.care-report-footer-grid small,.care-report-mini-card small{display:block;color:#64748b;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.05em}.care-report-demographics strong,.care-report-footer-grid strong{display:block;margin-top:4px;color:#102a43;font-size:12px;word-break:break-word}.care-report-callout{padding:15px;border-radius:14px}.care-report-callout p{margin:7px 0 0;color:#334e68;font-size:13px;line-height:1.7;white-space:pre-wrap}.care-report-callout-primary{background:#f8fbff;border:1px solid #dbeafe}.care-report-ai{background:linear-gradient(135deg,#ecfeff,#eff6ff);border:1px solid #bae6fd}.care-report-grid-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:12px}.care-report-mini-card{padding:13px;border:1px solid #e2e8f0;border-radius:13px;background:#fbfdff}.care-report-mini-card strong{display:block;margin-top:5px;color:#102a43;font-size:22px}.care-report-item-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.care-report-list-item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 11px;margin-top:7px;border-radius:11px;border:1px solid #e2e8f0;background:#fff;color:#334e68;font-size:12px}.care-report-empty{padding:11px 12px;margin-top:7px;border-radius:11px;background:#f8fafc;color:#94a3b8;font-size:12px}.care-report-recommendation{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;padding:14px;margin-top:9px;border-radius:13px;border:1px solid #e2e8f0;background:#fff}.care-report-recommendation strong{color:#102a43;font-size:13px}.care-report-recommendation p{margin:6px 0 0;color:#475569;font-size:12px;line-height:1.6;white-space:pre-wrap}.care-report-recommendation-meta{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.care-report-clinician-guidance{background:linear-gradient(180deg,#fcfffe,#f8fbff)}.care-report-clinician-callout{background:#f0fdfa;border:1px solid #99f6e4}.care-report-footer-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.care-report-limitations{margin:13px 0 0;color:#64748b;font-size:11px;line-height:1.6}.care-report-source{padding:0 24px 22px}.care-report-source summary{cursor:pointer;color:#0f766e;font-weight:800;font-size:11px;padding-top:3px}.care-report-source pre{margin:9px 0 0;padding:13px;border-radius:12px;background:#0f172a;color:#e2e8f0;overflow:auto;font-size:10px;line-height:1.55}@media(max-width:900px){.care-report-admin-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.care-report-cover{flex-direction:column}.care-report-status-block{justify-items:start;text-align:left}.care-report-patient-strip,.care-report-item-columns,.care-report-footer-grid{grid-template-columns:1fr}.care-report-recommendation{flex-direction:column}.care-report-recommendation-meta{justify-content:flex-start}}
+   `}</style>;
+ }
+ 
+@@ -218,24 +231,43 @@
+
+   const [guidanceByReport, setGuidanceByReport] = useState<Record<number, string>>({});
+   const [patientAccessByReport, setPatientAccessByReport] = useState<Record<number, { released_to_patient: boolean; patient_reviewed_at: string | null }>>({});
+   const [users, setUsers] = useState<CareUser[]>([]);
++  const [reviewedReports, setReviewedReports] = useState<AdminReviewedReport[]>([]);
++  const [reviewedReportsLoading, setReviewedReportsLoading] = useState(false);
++  const [reviewedReportsError, setReviewedReportsError] = useState("");
++
++  const refreshReviewedReports = async () => {
++    if (user?.role !== "administrator") return;
++    setReviewedReportsLoading(true);
++    try {
++      const rows = await listAdminReviewedReports(100);
++      setReviewedReports(rows);
++      setReviewedReportsError("");
++    } catch (err: any) {
++      setReviewedReportsError(err?.response?.data?.detail || "Reviewed reports could not be loaded.");
++    } finally {
++      setReviewedReportsLoading(false);
++    }
++  };
+ 
+   React.useEffect(() => {
+     if (user?.role !== "administrator") return;
+     void listUsers({ limit: 100 }).then(setUsers).catch(() => setUsers([]));
++    void refreshReviewedReports();
+   }, [user?.role]);
+ 
+   React.useEffect(() => {
+     void searchPatients({ search: "", limit: 100 }).then(setPatients).catch(() => setPatients([]));
+   }, []);
+ 
+-  const reviewByReport = useMemo(
+-    () => new Map(
+-      reviews
+-        .filter((review) => review.report_id !== null)
+-        .map((review) => [review.report_id as number, review]),
+-    ),
+-    [reviews],
+-  );
++  const reviewByReport = useMemo(() => {
++    const next = new Map<number, ClinicianReview>();
++    for (const review of reviews) {
++      if (review.report_id !== null && !next.has(review.report_id)) {
++        next.set(review.report_id, review);
++      }
++    }
++    return next;
++  }, [reviews]);
+ 
+   const run = async (label: string, fn: () => Promise<void>) => {
+     setBusy(label);
+@@ -340,10 +372,56 @@
+
+       if (!reviewByReport.has(report.id)) {
+         await submitReportForReview(report.assessment_id, report.id);
+       }
+-      const status = report.status === "completed" ? "completed" : report.status === "approved" ? "approved" : "pending";
++      const status = ["reviewed", "approved", "completed"].includes(report.status)
++        ? report.status as "reviewed" | "approved" | "completed"
++        : "pending";
+       await updateReportReview(report.assessment_id, report.id, status, guidance || undefined, "Clinician-authored patient guidance");
+       await refreshReportData(report.assessment_id);
+       setMessage("Clinician guidance saved.");
++    });
++  };
++
++  const markReportReviewed = async (report: Report) => {
++    await run("mark report reviewed", async () => {
++      if (!reviewByReport.has(report.id)) {
++        await submitReportForReview(report.assessment_id, report.id);
++      }
++      const guidance = (guidanceByReport[report.id] || "").trim();
++      await updateReportReview(
++        report.assessment_id,
++        report.id,
++        "reviewed",
++        guidance || "Report reviewed by clinician.",
++        "Clinician completed report review",
++      );
++      await refreshReportData(report.assessment_id);
++      await refreshReviewedReports();
++      setMessage("Report marked reviewed and is ready for approval and patient release.");
++    });
++  };
++
++  const removeReport = async (report: Report) => {
++    const confirmed = window.confirm(
++      `Delete \"${report.report_title}\" from CareSphere? This removes the report, its clinician-review record, and any patient portal access for this report.`,
++    );
++    if (!confirmed) return;
++
++    await run("delete report", async () => {
++      await deleteReport(report.id);
++      setReports((current) => current.filter((item) => item.id !== report.id));
++      setReviews((current) => current.filter((item) => item.report_id !== report.id));
++      setGuidanceByReport((current) => {
++        const next = { ...current };
++        delete next[report.id];
++        return next;
++      });
++      setPatientAccessByReport((current) => {
++        const next = { ...current };
++        delete next[report.id];
++        return next;
++      });
++      await refreshReviewedReports();
++      setMessage("Report deleted from CareSphere.");
+     });
+   };
+ 
+@@ -356,6 +434,7 @@
+
+         guidance || undefined,
+       );
+       await refreshReportData(report.assessment_id);
++      await refreshReviewedReports();
+       setMessage("Report approved and sent to the patient My Health portal.");
+     });
+   };
+@@ -376,20 +455,21 @@
+
+     });
+   };
+ 
+-  const reviewReport = async (report: Report, action: "approve" | "reject") => {
++  const rejectReport = async (report: Report) => {
+     if (!selectedAssessment) return;
+-    await run(`${action} report`, async () => {
++    await run("reject report", async () => {
+       if (!reviewByReport.has(report.id)) {
+         await submitReportForReview(selectedAssessment.id, report.id);
+       }
+       await updateReportReview(
+         selectedAssessment.id,
+         report.id,
+-        action === "approve" ? "approved" : "rejected",
+-        action === "approve" ? ((guidanceByReport[report.id] || "").trim() || "Report reviewed and approved by clinician.") : "Report reviewed and rejected by clinician.",
++        "rejected",
++        "Report reviewed and rejected by clinician.",
+       );
+       await refreshReportData(selectedAssessment.id);
+-      setMessage(`Report ${action === "approve" ? "approved" : "rejected"}.`);
++      await refreshReviewedReports();
++      setMessage("Report rejected. It is not available to the patient.");
+     });
+   };
+ 
+@@ -414,6 +494,58 @@
+
+ 
+       {message && <div style={{ padding: "11px 13px", background: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: 11, color: "#047857", fontWeight: 750, fontSize: 13 }}>{message}</div>}
+       {error && <div style={{ padding: "11px 13px", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 11, color: "#be123c", fontWeight: 750, fontSize: 13 }}>{error}</div>}
++
++      {user?.role === "administrator" && (
++        <section style={{ ...panel, background: "linear-gradient(135deg, #ffffff 0%, #f7fbff 100%)" }}>
++          <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
++            <div>
++              <div style={{ color: "#0f766e", fontSize: 11, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.08em" }}>Administrative oversight</div>
++              <h2 style={{ margin: "4px 0 5px", color: "#102a43", fontSize: 20 }}>Reviewed reports</h2>
++              <p style={{ margin: 0, color: "#627d98", fontSize: 12 }}>Reports with a completed clinician review action, including patient release and patient-review state.</p>
++            </div>
++            <span style={{ ...statusStyle("reviewed"), background: "#ecfeff", color: "#0f766e" }}>{reviewedReports.length} reviewed</span>
++          </div>
++
++          {reviewedReportsLoading ? (
++            <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#f8fafc", color: "#64748b", fontSize: 13 }}>Loading reviewed reports...</div>
++          ) : reviewedReportsError ? (
++            <div style={{ marginTop: 14, padding: 12, borderRadius: 12, background: "#fff7ed", border: "1px solid #fed7aa", color: "#c2410c", fontSize: 12 }}>{reviewedReportsError}</div>
++          ) : reviewedReports.length === 0 ? (
++            <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#f8fafc", color: "#64748b", fontSize: 13 }}>No reviewed reports are recorded yet.</div>
++          ) : (
++            <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
++              {reviewedReports.map((item) => (
++                <div key={item.report.id} style={{ display: "grid", gap: 11, padding: 14, border: "1px solid #e2e8f0", borderRadius: 14, background: "#fff" }}>
++                  <div style={{ display: "flex", gap: 12, justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap" }}>
++                    <div style={{ display: "flex", gap: 11, alignItems: "center", minWidth: 0 }}>
++                      <PatientAvatar patientId={item.patient.id} firstName={item.patient.first_name} lastName={item.patient.last_name} size={42} radius={13} />
++                      <div>
++                        <strong style={{ color: "#102a43", display: "block" }}>{item.report.report_title}</strong>
++                        <span style={{ color: "#627d98", fontSize: 11 }}>{item.patient.first_name} {item.patient.last_name} · {item.patient.patient_number} · Assessment {item.report.assessment_id}</span>
++                      </div>
++                    </div>
++                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
++                      <span style={statusStyle(item.review_status)}>{humanize(item.review_status)}</span>
++                      <span style={statusStyle(item.released_to_patient ? "completed" : "pending")}>{item.released_to_patient ? "Released" : "Not released"}</span>
++                    </div>
++                  </div>
++                  <div className="care-report-admin-meta" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
++                    <div style={{ padding: 10, borderRadius: 11, background: "#f8fafc" }}><small style={{ color: "#64748b", fontSize: 9, fontWeight: 850, textTransform: "uppercase" }}>Clinician</small><strong style={{ display: "block", marginTop: 4, color: "#102a43", fontSize: 11 }}>{item.clinician.full_name || item.clinician.username}</strong></div>
++                    <div style={{ padding: 10, borderRadius: 11, background: "#f8fafc" }}><small style={{ color: "#64748b", fontSize: 9, fontWeight: 850, textTransform: "uppercase" }}>Reviewed</small><strong style={{ display: "block", marginTop: 4, color: "#102a43", fontSize: 11 }}>{reportDate(item.reviewed_at)}</strong></div>
++                    <div style={{ padding: 10, borderRadius: 11, background: "#f8fafc" }}><small style={{ color: "#64748b", fontSize: 9, fontWeight: 850, textTransform: "uppercase" }}>Patient</small><strong style={{ display: "block", marginTop: 4, color: "#102a43", fontSize: 11 }}>{item.patient_reviewed_at ? `Reviewed ${reportDate(item.patient_reviewed_at)}` : item.released_to_patient ? "Awaiting review" : "Not released"}</strong></div>
++                    <div style={{ padding: 10, borderRadius: 11, background: "#f8fafc" }}><small style={{ color: "#64748b", fontSize: 9, fontWeight: 850, textTransform: "uppercase" }}>Version</small><strong style={{ display: "block", marginTop: 4, color: "#102a43", fontSize: 11 }}>v{item.report.version}</strong></div>
++                  </div>
++                  {item.report.executive_summary && <p style={{ margin: 0, color: "#475569", fontSize: 12, lineHeight: 1.55 }}>{item.report.executive_summary}</p>}
++                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
++                    <button type="button" onClick={() => void selectPatient(item.patient)} style={secondaryButton}>Open patient workspace</button>
++                  </div>
++                </div>
++              ))}
++            </div>
++          )}
++          <div style={{ marginTop: 10, color: "#94a3b8", fontSize: 10 }}>The administrative view reads the existing report/review records; it does not create duplicate reports.</div>
++        </section>
++      )}
+ 
+       <section style={panel}>
+         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+@@ -534,13 +666,12 @@
+
+                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: 13, borderRadius: 13, background: "#f8fafc", border: "1px solid #e2e8f0", alignItems: "center" }}>
+                         {review && <span style={statusStyle(review.review_status)}>Review: {humanize(review.review_status)}</span>}
+                         {!review && report.status === "draft" && <button type="button" disabled={Boolean(busy)} onClick={() => void submitReport(report)} style={secondaryButton}>{busy === "submit report for review" ? "Submitting..." : "Submit for Review"}</button>}
++                        {user?.role === "clinician" && ["draft", "pending_review", "awaiting_review", "rejected"].includes(report.status) && <button type="button" disabled={Boolean(busy)} onClick={() => void markReportReviewed(report)} style={primaryButton}>{busy === "mark report reviewed" ? "Reviewing..." : "Review Report"}</button>}
+                         {user?.role === "clinician" && <button type="button" disabled={Boolean(busy)} onClick={() => void saveClinicianGuidance(report)} style={secondaryButton}>{busy === "save clinician guidance" ? "Saving..." : "Save guidance"}</button>}
+-                        {user?.role === "clinician" && ["draft", "pending_review", "awaiting_review", "approved"].includes(report.status) && <button type="button" disabled={Boolean(busy)} onClick={() => void releaseReportToPatient(report)} style={primaryButton}>{busy === "release report to patient" ? "Sending..." : "Approve & Send to Patient"}</button>}
++                        {user?.role === "clinician" && ["reviewed", "approved"].includes(report.status) && <button type="button" disabled={Boolean(busy)} onClick={() => void releaseReportToPatient(report)} style={primaryButton}>{busy === "release report to patient" ? "Sending..." : "Approve & Send to Patient"}</button>}
+                         {user?.role === "clinician" && report.status === "completed" && <span style={{ ...statusStyle("completed"), background: "#eff6ff", color: "#0369a1" }}>Released</span>}
+-                        {review?.review_status === "pending" && <>
+-                          <button type="button" disabled={Boolean(busy)} onClick={() => void reviewReport(report, "approve")} style={primaryButton}>Approve Report</button>
+-                          <button type="button" disabled={Boolean(busy)} onClick={() => void reviewReport(report, "reject")} style={secondaryButton}>Reject Report</button>
+-                        </>}
++                        {user?.role === "clinician" && ["reviewed", "approved"].includes(report.status) && <button type="button" disabled={Boolean(busy)} onClick={() => void rejectReport(report)} style={secondaryButton}>Reject Report</button>}
++                        {user?.role === "clinician" && <button type="button" disabled={Boolean(busy)} onClick={() => void removeReport(report)} style={dangerButton}>Delete Report</button>}
+                       </div>
+                     </div>
+                   );

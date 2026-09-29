@@ -1,0 +1,49 @@
+--- ReportsWorkspace.tsx (before)
++++ ReportsWorkspace.tsx (Batch16)
+@@ -1,7 +1,7 @@
+ import React, { useMemo, useState } from "react";
+ import { useNavigate } from "react-router-dom";
+ import { useAuth } from "./auth/AuthContext";
+-import PatientAvatar from "./components/ui/PatientAvatar";
++import PatientAvatar from "./components/PatientAvatar";
+ import { searchPatients, type Patient } from "./api/patients";
+ import {
+   completeAssessment,
+@@ -412,33 +412,13 @@
+           </select>
+         </div>
+         <form onSubmit={findPatients} style={{ display: "flex", gap: 9, marginTop: 12, flexWrap: "wrap" }}>
+-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter the patient list by name or patient number..." style={{ ...input, flex: "1 1 280px" }} />
+-          <button type="submit" disabled={Boolean(busy)} style={secondaryButton}>{busy === "search patients" ? "Searching..." : "Search / refresh"}</button>
++          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search patient name or patient number..." style={{ ...input, flex: "1 1 280px" }} />
++          <button type="submit" disabled={Boolean(busy)} style={secondaryButton}>{busy === "search patients" ? "Searching..." : "Search"}</button>
+         </form>
+ 
+         {patients.length > 0 && (
+-          <div style={{ display: "grid", gap: 9, marginTop: 14 }}>
+-            {patients.map((patient) => (
+-              <button
+-                key={patient.id}
+-                type="button"
+-                onClick={() => void selectPatient(patient)}
+-                style={{
+-                  textAlign: "left",
+-                  border: selectedPatient?.id === patient.id ? "1px solid #5eead4" : "1px solid #e2e8f0",
+-                  borderRadius: 13,
+-                  padding: 13,
+-                  background: selectedPatient?.id === patient.id ? "#f0fdfa" : "#fff",
+-                  cursor: "pointer",
+-                }}
+-              >
+-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+-                  <strong style={{ color: "#102a43" }}>{patient.first_name} {patient.last_name}</strong>
+-                  <span style={statusStyle(patient.status)}>{humanize(patient.status)}</span>
+-                </div>
+-                <div style={{ marginTop: 4, color: "#627d98", fontSize: 12 }}>{patient.patient_number} · {patient.district || patient.country || "Location not recorded"}</div>
+-              </button>
+-            ))}
++          <div style={{ marginTop: 10, color: "#627d98", fontSize: 12 }}>
++            {patients.length} matching patient{patients.length === 1 ? "" : "s"} available in the selector.
+           </div>
+         )}
+       </section>

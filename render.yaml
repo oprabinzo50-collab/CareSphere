@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: caresphere-api-free
+    runtime: python
+    region: frankfurt
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+
+      # Gemini free-tier configuration.
+      # Set AI_ENABLED=true only after AI_API_KEY and AI_MODEL are configured.
+      - key: AI_ENABLED
+        value: "true"
+      - key: AI_PROVIDER
+        value: "gemini"
+      - key: AI_MODEL
+        value: "gemini-3.8-flash"
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_BASE_URL
+        value: "https://generativelanguage.googleapis.com/v1beta/openai/"
+      - key: AI_TIMEOUT_SECONDS
+        value: "30"
+      - key: AI_MAX_OUTPUT_TOKENS
+        value: "1200"
+
+      - key: APP_NAME
+        value: "CareSphere"
+      - key: APP_VERSION
+        value: "0.1.0"
+      - key: ALGORITHM
+        value: "HS256"
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"

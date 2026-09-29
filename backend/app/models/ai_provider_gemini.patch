@@ -1,0 +1,162 @@
+--- a/app/ai/provider.py
++++ b/app/ai/provider.py
+@@ -32,38 +32,41 @@
+         raise NotImplementedError
+ 
+ 
++def _build_openai_client(config: AIConfig):
++    if not config.api_key:
++        raise AIProviderUnavailable(
++            f"{config.provider.upper()} API key is not configured"
++        )
++
++    if not config.model:
++        raise AIProviderUnavailable(
++            "AI model is not configured"
++        )
++
++    try:
++        from openai import OpenAI
++    except ImportError as exc:
++        raise AIProviderUnavailable(
++            "The openai package is not installed"
++        ) from exc
++
++    client_kwargs = {
++        "api_key": config.api_key,
++        "timeout": config.timeout_seconds,
++    }
++
++    if config.base_url:
++        client_kwargs["base_url"] = config.base_url
++
++    return OpenAI(**client_kwargs)
++
++
+ class OpenAIProvider(AIProvider):
+-    """OpenAI implementation of the CareSphere AI provider interface."""
++    """OpenAI provider using the existing Responses API contract."""
+ 
+     def __init__(self, config: AIConfig):
+         self.config = config
+-
+-        if not config.api_key:
+-            raise AIProviderUnavailable(
+-                "OpenAI API key is not configured"
+-            )
+-
+-        if not config.model:
+-            raise AIProviderUnavailable(
+-                "AI model is not configured"
+-            )
+-
+-        try:
+-            from openai import OpenAI
+-        except ImportError as exc:
+-            raise AIProviderUnavailable(
+-                "The openai package is not installed"
+-            ) from exc
+-
+-        client_kwargs = {
+-            "api_key": config.api_key,
+-            "timeout": config.timeout_seconds,
+-        }
+-
+-        if config.base_url:
+-            client_kwargs["base_url"] = config.base_url
+-
+-        self.client = OpenAI(**client_kwargs)
++        self.client = _build_openai_client(config)
+ 
+     def generate(
+         self,
+@@ -97,6 +100,74 @@
+         )
+ 
+ 
++class GeminiProvider(AIProvider):
++    """
++    Gemini Developer API through Google's OpenAI-compatible endpoint.
++
++    Gemini's OpenAI compatibility is exposed through chat.completions,
++    not the OpenAI Responses API used by OpenAIProvider.
++    """
++
++    def __init__(self, config: AIConfig):
++        self.config = config
++        self.client = _build_openai_client(config)
++
++    def generate(
++        self,
++        *,
++        instructions: str,
++        input_text: str,
++    ) -> AIResponse:
++        try:
++            completion = self.client.chat.completions.create(
++                model=self.config.model,
++                messages=[
++                    {
++                        "role": "system",
++                        "content": instructions,
++                    },
++                    {
++                        "role": "user",
++                        "content": input_text,
++                    },
++                ],
++                reasoning_effort="low",
++                max_tokens=self.config.max_output_tokens,
++            )
++        except Exception as exc:
++            raise AIProviderError(
++                f"Gemini provider request failed: {exc}"
++            ) from exc
++
++        choices = getattr(completion, "choices", None) or []
++        if not choices:
++            raise AIProviderError(
++                "Gemini provider returned no choices"
++            )
++
++        message = getattr(choices[0], "message", None)
++        output = getattr(message, "content", None) if message else None
++
++        if isinstance(output, list):
++            output = "".join(
++                str(part.get("text", ""))
++                if isinstance(part, dict)
++                else str(part)
++                for part in output
++            )
++
++        if not output or not str(output).strip():
++            raise AIProviderError(
++                "Gemini provider returned an empty response"
++            )
++
++        return AIResponse(
++            provider="gemini",
++            model=self.config.model,
++            output=str(output).strip(),
++        )
++
++
+ def get_ai_provider() -> AIProvider:
+     config = get_config()
+ 
+@@ -108,6 +179,9 @@
+     if config.provider == "openai":
+         return OpenAIProvider(config)
+ 
++    if config.provider == "gemini":
++        return GeminiProvider(config)
++
+     raise AIProviderUnavailable(
+         f"Unsupported AI provider: {config.provider}"
+     )
+@@ -116,4 +190,4 @@
+ def get_config() -> AIConfig:
+     from app.ai.config import get_ai_config
+ 
+-    return get_ai_config()+    return get_ai_config()

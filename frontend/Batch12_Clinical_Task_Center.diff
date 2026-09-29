@@ -1,0 +1,42 @@
+--- /mnt/data/batch11/final_package/frontend/src/App.tsx	2026-09-28 23:54:16.874644280 +0000
++++ /mnt/data/batch12_work/frontend/src/App.tsx	2026-09-28 23:59:45.157134194 +0000
+@@ -43,6 +43,7 @@
+ import PatientAvatar from "./components/PatientAvatar";
+ import MetricCard from "./components/ui/MetricCard";
+ import WorkflowWorkspaceFrame from "./WorkflowWorkspaceFrame";
++import TaskCenter from "./TaskCenter";
+ import { AuditLogsPage, CareGapsPage, FollowUpsPage, NotificationsPage } from "./components/workflow/WorkflowPages";
+ function Login() {
+   const navigate = useNavigate();
+@@ -2175,6 +2176,7 @@
+     { label: "Dashboard", path: "/admin", icon: "home" },
+     { label: "Patients", path: "/patients", icon: "patient" },
+     { label: "Clinical Review", path: "/clinical-workspace", icon: "activity" },
++    { label: "Task Center", path: "/tasks", icon: "activity" },
+     { label: "User Management", path: "/users", icon: "users" },
+     { label: "Reports", path: "/reports", icon: "file" },
+     { label: "Care Gaps", path: "/care-gaps", icon: "activity" },
+@@ -2186,6 +2188,7 @@
+     { label: "Dashboard", path: "/", icon: "home" },
+     { label: "Patients", path: "/patients", icon: "patient" },
+     { label: "Clinical Review", path: "/clinical-workspace", icon: "activity" },
++    { label: "Task Center", path: "/tasks", icon: "activity" },
+     { label: "Care Team", path: "/care-team", icon: "users" },
+     { label: "Care Gaps", path: "/care-gaps", icon: "activity" },
+     { label: "Follow-ups", path: "/follow-ups", icon: "calendar" },
+@@ -2265,6 +2268,7 @@
+   const inputRef = React.useRef<HTMLInputElement | null>(null);
+ 
+   const workspaceActions = [
++    { label: "Task Center", detail: "Clinical queues and operational work", path: "/tasks", icon: "activity" as const },
+     { label: "Dashboard", detail: "Operational overview and activity", path: user?.role === "administrator" ? "/admin" : "/", icon: "home" as const },
+     { label: "Patients", detail: "Search and open patient records", path: "/patients", icon: "patient" as const },
+     { label: "Clinical Review", detail: "Assessments, risk and recommendations", path: "/clinical-workspace", icon: "activity" as const },
+@@ -2627,6 +2631,7 @@
+             <Route path="/clinical-workspace" element={user.role === "administrator" || user.role === "clinician" ? <ClinicalWorkspace /> : <Navigate to={homePath} replace />} />
+             <Route path="/clinical-review" element={user.role === "administrator" || user.role === "clinician" ? <ClinicalWorkspace /> : <Navigate to={homePath} replace />} />
+             <Route path="/clinical-reviews" element={user.role === "administrator" || user.role === "clinician" ? <ClinicalWorkspace /> : <Navigate to={homePath} replace />} />
++            <Route path="/tasks" element={user.role === "administrator" || user.role === "clinician" ? <TaskCenter /> : <Navigate to={homePath} replace />} />
+             <Route path="/care-team" element={user.role === "clinician" || user.role === "administrator" ? <CareTeamWorkspace /> : <Navigate to={homePath} replace />} />
+             <Route path="/care-gaps" element={user.role === "clinician" || user.role === "administrator" ? <WorkflowWorkspaceFrame module="care-gaps"><CareGapsPage /></WorkflowWorkspaceFrame> : <Navigate to={homePath} replace />} />
+             <Route path="/follow-ups" element={user.role === "clinician" || user.role === "administrator" ? <WorkflowWorkspaceFrame module="follow-ups"><FollowUpsPage /></WorkflowWorkspaceFrame> : <Navigate to={homePath} replace />} />

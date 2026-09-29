@@ -1,0 +1,6 @@
+# CareSphere deployment secrets — add these rules to your existing .gitignore if absent.
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env

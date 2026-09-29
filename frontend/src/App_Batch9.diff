@@ -1,0 +1,142 @@
+--- /mnt/data/batch9_package/App_Batch8_BASE.tsx	2026-09-28 23:02:00.326268284 +0000
++++ /mnt/data/batch9_package/App.tsx	2026-09-28 23:02:00.323459103 +0000
+@@ -2137,6 +2137,7 @@
+   onClose: () => void;
+ }) {
+   const navigate = useNavigate();
++  const { user } = useAuth();
+   const [query, setQuery] = useState("");
+   const [patients, setPatients] = useState<Patient[]>([]);
+   const [recentPatients, setRecentPatients] = useState<RecentPatient[]>([]);
+@@ -2145,6 +2146,29 @@
+   const [error, setError] = useState("");
+   const inputRef = React.useRef<HTMLInputElement | null>(null);
+ 
++  const workspaceActions = [
++    { label: "Dashboard", detail: "Operational overview and activity", path: user?.role === "administrator" ? "/admin" : "/", icon: "home" as const },
++    { label: "Patients", detail: "Search and open patient records", path: "/patients", icon: "patient" as const },
++    { label: "Clinical Review", detail: "Assessments, risk and recommendations", path: "/clinical-workspace", icon: "activity" as const },
++    { label: "Follow-ups", detail: "Review follow-up workflow activity", path: "/follow-ups", icon: "calendar" as const },
++    { label: "Care Gaps", detail: "Review open care opportunities", path: "/care-gaps", icon: "activity" as const },
++    { label: "Notifications", detail: "Review workspace notifications", path: "/notifications", icon: "bell" as const },
++    { label: "Reports", detail: "Open generated clinical reports", path: "/reports", icon: "file" as const },
++    ...(user?.role === "administrator"
++      ? [
++          { label: "User Management", detail: "Accounts, roles and access", path: "/users", icon: "users" as const },
++          { label: "Audit Logs", detail: "Review governance activity", path: "/audit-logs", icon: "shield" as const },
++        ]
++      : []),
++  ];
++
++  const normalizedQuery = query.trim().toLowerCase();
++  const filteredWorkspaceActions = normalizedQuery
++    ? workspaceActions.filter((action) =>
++        `${action.label} ${action.detail}`.toLowerCase().includes(normalizedQuery),
++      )
++    : workspaceActions.slice(0, 6);
++
+   useEffect(() => {
+     inputRef.current?.focus();
+     setRecentPatients(readRecentPatients());
+@@ -2209,14 +2233,19 @@
+     setRecentPatients([]);
+   };
+ 
++  const openWorkspaceAction = (path: string) => {
++    navigate(path);
++    onClose();
++  };
++
+   return (
+     <div className="care-command-overlay" role="presentation" onMouseDown={onClose}>
+-      <div className="care-command-dialog" role="dialog" aria-modal="true" aria-label="Quick patient search" onMouseDown={(event) => event.stopPropagation()}>
++      <div className="care-command-dialog" role="dialog" aria-modal="true" aria-label="CareSphere command center" onMouseDown={(event) => event.stopPropagation()}>
+         <div className="care-command-header">
+           <div>
+             <div className="care-section-kicker">CareSphere command center</div>
+-            <h2 style={{ margin: "4px 0 4px", color: "#102a43", fontSize: 21 }}>Find a patient</h2>
+-            <p style={{ margin: 0, color: "#627d98", fontSize: 12 }}>Search by name, patient number, or available patient information.</p>
++            <h2 style={{ margin: "4px 0 4px", color: "#102a43", fontSize: 21 }}>Go anywhere</h2>
++            <p style={{ margin: 0, color: "#627d98", fontSize: 12 }}>Open a workspace or search patients without leaving your current flow.</p>
+           </div>
+           <button type="button" className="care-command-close" onClick={onClose} aria-label="Close quick search">×</button>
+         </div>
+@@ -2227,7 +2256,7 @@
+             ref={inputRef}
+             value={query}
+             onChange={(event) => setQuery(event.target.value)}
+-            placeholder="Start typing a patient name or number..."
++            placeholder="Search patients or workspace actions..."
+             autoComplete="off"
+             aria-label="Search patients"
+           />
+@@ -2237,11 +2266,40 @@
+         {loading && <div className="care-command-status">Searching patient records…</div>}
+         {error && <div className="care-command-error">{error}</div>}
+ 
+-        {!loading && !error && query.trim() && patients.length === 0 && (
++        {filteredWorkspaceActions.length > 0 && (
++          <div className="care-command-actions-grid">
++            <div className="care-command-section-head">
++              <div>
++                <div className="care-section-kicker">Workspace actions</div>
++                <strong>{normalizedQuery ? "Matching tools" : "Quick access"}</strong>
++              </div>
++              {!normalizedQuery && <span className="care-command-hint">Navigation stays role-aware</span>}
++            </div>
++            <div className="care-command-tool-grid">
++              {filteredWorkspaceActions.map((action) => (
++                <button
++                  type="button"
++                  key={action.path}
++                  className="care-command-tool"
++                  onClick={() => openWorkspaceAction(action.path)}
++                >
++                  <span className="care-command-tool-icon"><Icon name={action.icon} size={17} /></span>
++                  <span className="care-command-tool-copy">
++                    <strong>{action.label}</strong>
++                    <span>{action.detail}</span>
++                  </span>
++                  <span className="care-command-tool-arrow">›</span>
++                </button>
++              ))}
++            </div>
++          </div>
++        )}
++
++        {!loading && !error && normalizedQuery && filteredWorkspaceActions.length === 0 && patients.length === 0 && (
+           <div className="care-command-empty">
+             <div className="care-empty-icon"><Icon name="patient" size={18} /></div>
+-            <strong>No matching patient records</strong>
+-            <span>Try a patient name or patient number.</span>
++            <strong>No matching workspace or patient records</strong>
++            <span>Try a patient name, patient number, or workspace name.</span>
+           </div>
+         )}
+ 
+@@ -2632,6 +2690,16 @@
+       .care-command-status, .care-command-error { margin-top: 12px; padding: 10px 12px; border-radius: 11px; font-size: 12px; }
+       .care-command-status { background: #f0fdfa; color: #0f766e; border: 1px solid #ccfbf1; }
+       .care-command-error { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
++      .care-command-actions-grid { margin-top: 14px; padding: 12px; border-radius: 16px; background: linear-gradient(135deg, #f7fbfc, #ffffff); border: 1px solid #e2edf0; }
++      .care-command-hint { color: #829ab1; font-size: 10px; font-weight: 700; }
++      .care-command-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
++      .care-command-tool { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 9px; width: 100%; min-width: 0; padding: 10px; border: 1px solid #e0ebee; border-radius: 12px; background: rgba(255,255,255,0.92); text-align: left; cursor: pointer; transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease; }
++      .care-command-tool:hover { transform: translateY(-1px); border-color: #b7ddd8; box-shadow: 0 8px 18px rgba(16,42,67,0.06); }
++      .care-command-tool-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; background: #ecfdf9; color: #0f766e; }
++      .care-command-tool-copy { display: grid; gap: 2px; min-width: 0; }
++      .care-command-tool-copy strong { color: #102a43; font-size: 11px; }
++      .care-command-tool-copy span { color: #627d98; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
++      .care-command-tool-arrow { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 7px; background: #f0fdfa; color: #0f766e; font-size: 17px; }
+       .care-command-recent { margin-top: 14px; padding: 12px; border-radius: 16px; background: linear-gradient(135deg, #f7fbfc, #ffffff); border: 1px solid #e2edf0; }
+       .care-command-section-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 8px; color: #102a43; font-size: 12px; }
+       .care-command-clear { border: 0; background: transparent; color: #0f766e; font-size: 11px; font-weight: 850; cursor: pointer; padding: 5px 7px; border-radius: 8px; }
+@@ -2678,6 +2746,8 @@
+         .care-command-launcher kbd { display: none; }
+         .care-command-overlay { padding: 76px 10px 10px; }
+         .care-command-dialog { border-radius: 18px; padding: 13px; max-height: calc(100vh - 86px); }
++        .care-command-tool-grid { grid-template-columns: 1fr; }
++        .care-command-tool-arrow { display: none; }
+         .care-command-result { grid-template-columns: auto minmax(0,1fr); }
+         .care-command-arrow { display: none; }
+         .care-command-actions { display: grid; grid-template-columns: 1fr; }

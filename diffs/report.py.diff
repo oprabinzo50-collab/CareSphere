@@ -1,0 +1,141 @@
+--- /mnt/data/report.py	2026-09-29 02:26:54.328487797 +0000
++++ /mnt/data/b17_restore_package/backend/app/routes/report.py	2026-09-29 02:29:39.700877637 +0000
+@@ -6,6 +6,8 @@
+ 
+ from app.database import SessionLocal
+ from app.models.assessment_sessions import AssessmentSession
++from app.models.clinician_reviews import ClinicianReview
++from app.models.patient_report_access import PatientReportAccess
+ from app.models.reports import Report
+ from app.models.user import User
+ from app.schemas.report import (
+@@ -17,6 +19,7 @@
+ from app.services.report_notification_automation import (
+     trigger_report_notifications,
+ )
++from app.utils.audit import create_audit_log
+ 
+ 
+ router = APIRouter(
+@@ -207,4 +210,119 @@
+             report=report,
+         )
+ 
+-    return report
+\ No newline at end of file
++    return report
++
++@router.post(
++    "/{assessment_id}/reports/{report_id}/release-to-patient",
++)
++def release_report_to_patient(
++    assessment_id: int,
++    report_id: int,
++    clinical_comment: str | None = None,
++    db: Session = Depends(get_db),
++    current_user: User = Depends(require_roles("clinician")),
++):
++    """Approve a report and make it visible in the linked patient's My Health portal."""
++    assessment = db.get(AssessmentSession, assessment_id)
++    if assessment is None:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail="Assessment session not found",
++        )
++
++    report = db.get(Report, report_id)
++    if report is None:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail="Report not found",
++        )
++
++    if report.assessment_id != assessment_id:
++        raise HTTPException(
++            status_code=status.HTTP_400_BAD_REQUEST,
++            detail="Report does not belong to this assessment",
++        )
++
++    if str(report.status).lower() == "rejected":
++        raise HTTPException(
++            status_code=status.HTTP_409_CONFLICT,
++            detail="Rejected reports must be reviewed again before release",
++        )
++
++    now = datetime.now(timezone.utc)
++    review = db.scalar(
++        select(ClinicianReview)
++        .where(
++            ClinicianReview.assessment_id == assessment_id,
++            ClinicianReview.report_id == report_id,
++        )
++        .order_by(ClinicianReview.id.desc())
++    )
++
++    if review is None:
++        review = ClinicianReview(
++            assessment_id=assessment_id,
++            report_id=report_id,
++            clinician_id=current_user.id,
++            review_status="completed",
++            clinical_comment=clinical_comment or "Report approved and released to the patient.",
++            modification_notes="Patient-facing report release",
++            reviewed_at=now,
++            created_at=now,
++            updated_at=now,
++        )
++        db.add(review)
++    else:
++        review.clinician_id = current_user.id
++        review.review_status = "completed"
++        review.clinical_comment = clinical_comment or review.clinical_comment or "Report approved and released to the patient."
++        review.modification_notes = "Patient-facing report release"
++        review.reviewed_at = now
++        review.updated_at = now
++
++    report.status = "completed"
++    report.updated_at = now
++
++    access = db.scalar(
++        select(PatientReportAccess)
++        .where(PatientReportAccess.report_id == report_id)
++    )
++    if access is None:
++        access = PatientReportAccess(
++            patient_id=assessment.patient_id,
++            report_id=report_id,
++            reviewed_at=None,
++            last_viewed_at=None,
++            created_at=now,
++            updated_at=now,
++        )
++        db.add(access)
++    else:
++        access.patient_id = assessment.patient_id
++        access.updated_at = now
++
++    create_audit_log(
++        db=db,
++        user_id=current_user.id,
++        action="release",
++        entity_type="Report",
++        entity_id=report.id,
++        description="Clinician approved and released clinical report to patient portal",
++    )
++
++    db.commit()
++    db.refresh(review)
++    db.refresh(report)
++    db.refresh(access)
++
++    return {
++        "review": review,
++        "report": report,
++        "patient_access": {
++            "report_id": report.id,
++            "patient_id": assessment.patient_id,
++            "released_to_patient": True,
++            "patient_reviewed_at": access.reviewed_at,
++            "last_viewed_at": access.last_viewed_at,
++        },
++    }

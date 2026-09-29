@@ -1,0 +1,10 @@
+--- /mnt/data/batch7_package/App_Batch6_BASE.tsx	2026-09-28 22:04:19.480922345 +0000
++++ /mnt/data/batch7_work/App.tsx	2026-09-28 22:04:09.491148425 +0000
+@@ -498,7 +498,6 @@
+   if (selectedPatientId && profile) {
+     const patient = profile.patient;
+ 
+-    const initials = `${patient.first_name?.[0] ?? ""}${patient.last_name?.[0] ?? ""}`.toUpperCase();
+     const locationLabel = [patient.district, patient.country]
+       .filter(Boolean)
+       .join(", ") || "Location not provided";

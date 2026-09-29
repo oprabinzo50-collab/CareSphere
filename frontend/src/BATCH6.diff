@@ -1,0 +1,157 @@
+--- App.tsx (Batch5)
++++ App.tsx (Batch6)
+@@ -1999,6 +1999,58 @@
+   ],
+ } as const;
+ 
++const RECENT_PATIENTS_KEY = "caresphere:recent-patients";
++
++type RecentPatient = Pick<
++  Patient,
++  "id" | "patient_number" | "first_name" | "last_name" | "district" | "country" | "sex" | "status"
++>;
++
++function readRecentPatients(): RecentPatient[] {
++  try {
++    const raw = window.sessionStorage.getItem(RECENT_PATIENTS_KEY);
++    if (!raw) return [];
++    const parsed = JSON.parse(raw);
++    if (!Array.isArray(parsed)) return [];
++    return parsed.filter((item): item is RecentPatient => (
++      item &&
++      typeof item.id === "number" &&
++      typeof item.patient_number === "string" &&
++      typeof item.first_name === "string" &&
++      typeof item.last_name === "string"
++    )).slice(0, 6);
++  } catch {
++    return [];
++  }
++}
++
++function rememberRecentPatient(patient: RecentPatient) {
++  try {
++    const compact: RecentPatient = {
++      id: patient.id,
++      patient_number: patient.patient_number,
++      first_name: patient.first_name,
++      last_name: patient.last_name,
++      district: patient.district,
++      country: patient.country,
++      sex: patient.sex,
++      status: patient.status,
++    };
++    const next = [compact, ...readRecentPatients().filter((item) => item.id !== patient.id)].slice(0, 6);
++    window.sessionStorage.setItem(RECENT_PATIENTS_KEY, JSON.stringify(next));
++  } catch {
++    // Recent history is a convenience feature; navigation remains authoritative.
++  }
++}
++
++function clearRecentPatients() {
++  try {
++    window.sessionStorage.removeItem(RECENT_PATIENTS_KEY);
++  } catch {
++    // Ignore storage failures.
++  }
++}
++
+ function GlobalPatientCommandCenter({
+   onClose,
+ }: {
+@@ -2007,6 +2059,7 @@
+   const navigate = useNavigate();
+   const [query, setQuery] = useState("");
+   const [patients, setPatients] = useState<Patient[]>([]);
++  const [recentPatients, setRecentPatients] = useState<RecentPatient[]>([]);
+   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+   const [loading, setLoading] = useState(false);
+   const [error, setError] = useState("");
+@@ -2014,6 +2067,7 @@
+ 
+   useEffect(() => {
+     inputRef.current?.focus();
++    setRecentPatients(readRecentPatients());
+   }, []);
+ 
+   useEffect(() => {
+@@ -2050,15 +2104,29 @@
+   }, [query]);
+ 
+   const openClinicalReview = (patient: Patient) => {
++    rememberRecentPatient(patient);
+     window.sessionStorage.setItem("caresphere:quick-patient", String(patient.id));
+     navigate("/clinical-workspace");
+     onClose();
+   };
+ 
+   const openPatientRecords = (patient: Patient) => {
++    rememberRecentPatient(patient);
+     window.sessionStorage.setItem("caresphere:quick-patient", String(patient.id));
+     navigate("/patients");
+     onClose();
++  };
++
++  const openRecentPatient = (patient: RecentPatient) => {
++    rememberRecentPatient(patient);
++    window.sessionStorage.setItem("caresphere:quick-patient", String(patient.id));
++    navigate("/clinical-workspace");
++    onClose();
++  };
++
++  const handleClearRecent = () => {
++    clearRecentPatients();
++    setRecentPatients([]);
+   };
+ 
+   return (
+@@ -2094,6 +2162,38 @@
+             <div className="care-empty-icon"><Icon name="patient" size={18} /></div>
+             <strong>No matching patient records</strong>
+             <span>Try a patient name or patient number.</span>
++          </div>
++        )}
++
++        {!query.trim() && recentPatients.length > 0 && (
++          <div className="care-command-recent">
++            <div className="care-command-section-head">
++              <div>
++                <div className="care-section-kicker">Workspace memory</div>
++                <strong>Recently opened patients</strong>
++              </div>
++              <button type="button" className="care-command-clear" onClick={handleClearRecent}>Clear</button>
++            </div>
++            <div className="care-command-results">
++              {recentPatients.map((patient) => (
++                <button
++                  type="button"
++                  key={`recent-${patient.id}`}
++                  className="care-command-result"
++                  onClick={() => openRecentPatient(patient)}
++                >
++                  <span className="care-command-avatar">
++                    <PatientAvatar patientId={patient.id} firstName={patient.first_name} lastName={patient.last_name} size={42} radius={13} />
++                  </span>
++                  <span className="care-command-result-main">
++                    <strong>{patient.first_name} {patient.last_name}</strong>
++                    <span>{patient.patient_number} · {patient.district || "Location not recorded"}</span>
++                    <span>{patient.sex ? humanizeValue(patient.sex) : "Sex not recorded"} · {patient.status ? humanizeValue(patient.status) : "Status not recorded"}</span>
++                  </span>
++                  <span className="care-command-arrow">›</span>
++                </button>
++              ))}
++            </div>
+           </div>
+         )}
+ 
+@@ -2452,6 +2552,10 @@
+       .care-command-status, .care-command-error { margin-top: 12px; padding: 10px 12px; border-radius: 11px; font-size: 12px; }
+       .care-command-status { background: #f0fdfa; color: #0f766e; border: 1px solid #ccfbf1; }
+       .care-command-error { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
++      .care-command-recent { margin-top: 14px; padding: 12px; border-radius: 16px; background: linear-gradient(135deg, #f7fbfc, #ffffff); border: 1px solid #e2edf0; }
++      .care-command-section-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 8px; color: #102a43; font-size: 12px; }
++      .care-command-clear { border: 0; background: transparent; color: #0f766e; font-size: 11px; font-weight: 850; cursor: pointer; padding: 5px 7px; border-radius: 8px; }
++      .care-command-clear:hover { background: #ecfeff; }
+       .care-command-results { display: grid; gap: 7px; margin-top: 13px; }
+       .care-command-result {
+         width: 100%; display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 11px; align-items: center;

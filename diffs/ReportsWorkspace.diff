@@ -1,0 +1,41 @@
+--- /mnt/data/inspect16/batch16_package/frontend/src/ReportsWorkspace.tsx	2026-09-29 01:22:39.000000000 +0000
++++ /mnt/data/b17_restore_package/frontend/src/ReportsWorkspace.tsx	2026-09-29 02:28:55.556672044 +0000
+@@ -10,6 +10,7 @@
+   listClinicianReviews,
+   listReports,
+   getReportPatientAccess,
++  releaseReportToPatient as releaseReportToPatientApi,
+   submitReportForReview,
+   updateReportReview,
+   type AssessmentSession,
+@@ -335,10 +336,9 @@
+   const releaseReportToPatient = async (report: Report) => {
+     const guidance = (guidanceByReport[report.id] || "").trim();
+     await run("release report to patient", async () => {
+-      if (!reviewByReport.has(report.id)) await submitReportForReview(report.assessment_id, report.id);
+-      await updateReportReview(report.assessment_id, report.id, "completed", guidance || "Reviewed by clinician and released to the patient.", "Patient-facing report release");
++      await releaseReportToPatientApi(report.assessment_id, report.id, guidance || undefined);
+       await refreshReportData(report.assessment_id);
+-      setMessage("Report approved and released to the patient account.");
++      setMessage("Report approved and sent to the patient My Health portal.");
+     });
+   };
+ 
+@@ -495,7 +495,7 @@
+                     <div style={{ display: "grid", gap: 12 }}>
+                       <ReportsPreview
+                         report={report}
+-                        patient={selectedPatient}
++                        patient={selectedPatient!}
+                         preparedBy={preparedByLabel(report)}
+                         clinicianGuidance={guidanceByReport[report.id] || ""}
+                         reviewStatus={review?.review_status}
+@@ -517,7 +517,7 @@
+                         {review && <span style={statusStyle(review.review_status)}>Review: {humanize(review.review_status)}</span>}
+                         {!review && report.status === "draft" && <button type="button" disabled={Boolean(busy)} onClick={() => void submitReport(report)} style={secondaryButton}>{busy === "submit report for review" ? "Submitting..." : "Submit for Review"}</button>}
+                         {user?.role === "clinician" && review && <button type="button" disabled={Boolean(busy)} onClick={() => void saveClinicianGuidance(report)} style={secondaryButton}>Save guidance</button>}
+-                        {user?.role === "clinician" && ["draft", "pending_review", "awaiting_review", "approved"].includes(report.status) && <button type="button" disabled={Boolean(busy)} onClick={() => void releaseReportToPatient(report)} style={primaryButton}>{busy === "release report to patient" ? "Releasing..." : "Approve & Release to Patient"}</button>}
++                        {user?.role === "clinician" && ["draft", "pending_review", "awaiting_review", "approved"].includes(report.status) && <button type="button" disabled={Boolean(busy)} onClick={() => void releaseReportToPatient(report)} style={primaryButton}>{busy === "release report to patient" ? "Sending..." : "Approve & Send to Patient"}</button>}
+                         {user?.role === "clinician" && report.status === "completed" && <span style={{ ...statusStyle("completed"), background: "#eff6ff", color: "#0369a1" }}>Released</span>}
+                         {review?.review_status === "pending" && <>
+                           <button type="button" disabled={Boolean(busy)} onClick={() => void reviewReport(report, "approve")} style={primaryButton}>Approve Report</button>

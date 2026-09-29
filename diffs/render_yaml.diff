@@ -1,0 +1,19 @@
+--- Batch21 render.yaml
++++ Batch22 render.yaml
+@@
+-      - key: DATABASE_URL
+-        fromDatabase:
+-          name: caresphere-db
+-          property: connectionString
++      - key: DATABASE_URL
++        sync: false
+@@
+-databases:
+-  - name: caresphere-db
+-    region: frankfurt
+-    plan: free
+-    postgresMajorVersion: "17"
+-    databaseName: caresphere
+-    user: caresphere
++# Intentionally no Render Postgres resource.
++# Batch22 uses Neon Free so the database is not deleted after 30 days.

@@ -1,0 +1,14 @@
+CARESPHERE BATCH 4 — patientPortal.ts PATCH
+
+Your current build already required this function. Make sure it exists in src/api/patientPortal.ts:
+
+export async function updateMyContact(
+  contactId: number,
+  data: ContactInput,
+) {
+  const response = await api.put(
+    `/patient/me/contacts/${contactId}`,
+    data,
+  );
+  return response.data;
+}

@@ -1,0 +1,19 @@
+CareSphere Batch22 $0 Deployment
+
+Target:
+  GitHub Free -> Cloudflare Pages -> Render Free API -> Neon Free PostgreSQL -> Gemini Free Tier
+
+Application logic:
+  PRESERVED (not bundled/replaced by this archive)
+
+Render Postgres:
+  NOT USED
+
+Frontend hosting:
+  CLOUDFLARE PAGES
+
+API hosting:
+  RENDER FREE WEB SERVICE
+
+Database:
+  NEON FREE POSTGRESQL

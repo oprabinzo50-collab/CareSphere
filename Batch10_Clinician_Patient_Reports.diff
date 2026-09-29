@@ -1,0 +1,657 @@
+=== App.tsx: Batch 9 -> Batch 10 ===
+--- /mnt/data/batch9_package/App.tsx	2026-09-28 23:02:00.323459103 +0000
++++ /mnt/data/CareSphere_Batch10_Work/frontend/src/App.tsx	2026-09-28 23:22:23.796789954 +0000
+@@ -212,6 +212,17 @@
+     </div>
+   );
+ }
++function CareSphere3DMark() {
++  return (
++    <div className="care-3d-logo-wrap" aria-label="CareSphere animated mark" role="img">
++      <div className="care-3d-logo-orbit care-3d-orbit-a" />
++      <div className="care-3d-logo-orbit care-3d-orbit-b" />
++      <div className="care-3d-logo-core"><span>CS</span></div>
++      <div className="care-3d-logo-caption">CareSphere</div>
++    </div>
++  );
++}
++
+ function Dashboard() {
+   const { user } = useAuth();
+   const [summary, setSummary] =
+@@ -292,9 +303,12 @@
+           <h1 className="care-dashboard-title">Welcome back, {user?.full_name || "Care team"}</h1>
+           <p className="care-dashboard-subtitle">Patient care intelligence, operational visibility and review activity in one workspace.</p>
+         </div>
+-        <div className="care-dashboard-hero-badge">
++        <div className="care-dashboard-hero-visual">
++          <CareSphere3DMark />
++          <div className="care-dashboard-hero-badge">
+           <span className="care-dashboard-hero-dot" />
+           Workspace active
++          </div>
+         </div>
+       </section>
+ 
+@@ -2827,12 +2841,29 @@
+       ::-webkit-scrollbar-thumb { background:#c4d7dd; border-radius:999px; border:2px solid #eef4f6; }
+       ::-webkit-scrollbar-thumb:hover { background:#9fbac4; }
+ 
++      .care-dashboard-hero-visual { position:relative; z-index:1; display:grid; justify-items:center; gap:10px; min-width:150px; }
++      .care-3d-logo-wrap { position:relative; width:138px; height:132px; display:grid; place-items:center; perspective:700px; transform-style:preserve-3d; }
++      .care-3d-logo-core { width:74px; height:74px; border-radius:24px; display:grid; place-items:center; background:linear-gradient(145deg,#083b4c,#0f766e 58%,#22c1b5); box-shadow:0 24px 36px rgba(8,127,120,.25), inset 5px 5px 14px rgba(255,255,255,.26), inset -7px -8px 14px rgba(4,54,64,.26); transform:rotateX(14deg) rotateY(-20deg); animation:care3dFloat 4.8s ease-in-out infinite; }
++      .care-3d-logo-core span { color:#fff; font-weight:950; font-size:22px; letter-spacing:-.08em; text-shadow:0 4px 12px rgba(0,0,0,.24); transform:translateZ(18px); }
++      .care-3d-logo-orbit { position:absolute; border:1px solid rgba(15,118,110,.23); border-radius:50%; transform-style:preserve-3d; pointer-events:none; }
++      .care-3d-orbit-a { width:118px; height:42px; transform:rotateX(63deg) rotateZ(-18deg); animation:care3dSpinA 7s linear infinite; }
++      .care-3d-orbit-b { width:96px; height:96px; transform:rotateY(68deg) rotateZ(25deg); border-color:rgba(56,189,248,.22); animation:care3dSpinB 8.5s linear infinite reverse; }
++      .care-3d-orbit-a::after, .care-3d-orbit-b::after { content:""; position:absolute; width:7px; height:7px; border-radius:50%; top:50%; left:50%; box-shadow:0 0 0 5px rgba(20,184,166,.09), 0 7px 18px rgba(8,127,120,.15); }
++      .care-3d-orbit-a::after { transform:translate(-50%,-50%) translateX(58px); background:#14b8a6; }
++      .care-3d-orbit-b::after { transform:translate(-50%,-50%) translateX(48px); background:#38bdf8; }
++      .care-3d-logo-caption { position:absolute; bottom:-2px; font-size:10px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:#0f766e; text-shadow:0 3px 10px rgba(8,127,120,.09); }
++      @keyframes care3dFloat { 0%,100% { transform:rotateX(14deg) rotateY(-20deg) translateY(0) translateZ(0); } 50% { transform:rotateX(18deg) rotateY(14deg) translateY(-6px) translateZ(8px); } }
++      @keyframes care3dSpinA { from { transform:rotateX(63deg) rotateZ(-18deg); } to { transform:rotateX(63deg) rotateZ(342deg); } }
++      @keyframes care3dSpinB { from { transform:rotateY(68deg) rotateZ(25deg); } to { transform:rotateY(68deg) rotateZ(385deg); } }
++      @media (prefers-reduced-motion: reduce) { .care-3d-logo-core, .care-3d-orbit-a, .care-3d-orbit-b { animation:none !important; } }
++
+       @media (max-width: 900px) {
+         .care-dashboard-quick-grid { grid-template-columns: 1fr; }
+         .care-account-overview { grid-template-columns: repeat(2, minmax(0,1fr)); }
+       }
+       @media (max-width: 640px) {
+         .care-dashboard-hero { padding: 20px; }
++        .care-dashboard-hero-visual { width:100%; justify-items:start; grid-template-columns:auto auto; align-items:center; }
+         .care-dashboard-title { font-size: 27px; }
+         .care-dashboard-summary { align-items: flex-start; }
+         .care-dashboard-summary-pills { width: 100%; }
+=== ReportsWorkspace.tsx ===
+--- /mnt/data/batch9_validation/frontend/src/ReportsWorkspace.tsx	2026-09-28 07:50:18.000000000 +0000
++++ /mnt/data/CareSphere_Batch10_Work/frontend/src/ReportsWorkspace.tsx	2026-09-28 23:23:41.018504309 +0000
+@@ -1,5 +1,6 @@
+ import React, { useMemo, useState } from "react";
+ import { useNavigate } from "react-router-dom";
++import { useAuth } from "./auth/AuthContext";
+ import { searchPatients, type Patient } from "./api/patients";
+ import {
+   completeAssessment,
+@@ -7,12 +8,14 @@
+   listAssessments,
+   listClinicianReviews,
+   listReports,
++  getReportPatientAccess,
+   submitReportForReview,
+   updateReportReview,
+   type AssessmentSession,
+   type ClinicianReview,
+   type Report,
+ } from "./api/clinical";
++import { listUsers, type CareUser } from "./api/users";
+ 
+ const panel: React.CSSProperties = {
+   background: "rgba(255,255,255,0.97)",
+@@ -89,6 +92,7 @@
+ 
+ export default function ReportsWorkspace() {
+   const navigate = useNavigate();
++  const { user } = useAuth();
+   const [query, setQuery] = useState("");
+   const [patients, setPatients] = useState<Patient[]>([]);
+   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+@@ -100,6 +104,14 @@
+   const [busy, setBusy] = useState("");
+   const [message, setMessage] = useState("");
+   const [error, setError] = useState("");
++  const [guidanceByReport, setGuidanceByReport] = useState<Record<number, string>>({});
++  const [patientAccessByReport, setPatientAccessByReport] = useState<Record<number, { released_to_patient: boolean; patient_reviewed_at: string | null }>>({});
++  const [users, setUsers] = useState<CareUser[]>([]);
++
++  React.useEffect(() => {
++    if (user?.role !== "administrator") return;
++    void listUsers({ limit: 100 }).then(setUsers).catch(() => setUsers([]));
++  }, [user?.role]);
+ 
+   const reviewByReport = useMemo(
+     () => new Map(
+@@ -148,24 +160,27 @@
+     });
+   };
+ 
+-  const loadReviewsSafely = async (assessmentId: number) => {
++  const refreshReportData = async (assessmentId: number) => {
++    const reportRows = await listReports(assessmentId);
++    setReports(reportRows);
+     try {
+       const rows = await listClinicianReviews(assessmentId);
+       setReviews(rows);
+       setReviewError("");
++      setGuidanceByReport(Object.fromEntries(rows.filter((row) => row.report_id !== null).map((row) => [row.report_id as number, row.clinical_comment || ""])));
+     } catch (err: any) {
+       setReviews([]);
+-      setReviewError(
+-        err?.response?.data?.detail ||
+-          "Clinician reviews could not be loaded. Reports remain available."
+-      );
++      setReviewError(err?.response?.data?.detail || "Clinician reviews could not be loaded. Reports remain available.");
+     }
+-  };
+-
+-  const refreshReportData = async (assessmentId: number) => {
+-    const reportRows = await listReports(assessmentId);
+-    setReports(reportRows);
+-    await loadReviewsSafely(assessmentId);
++    const accessEntries = await Promise.all(reportRows.map(async (report) => {
++      try {
++        const access = await getReportPatientAccess(report.id);
++        return [report.id, { released_to_patient: access.released_to_patient, patient_reviewed_at: access.patient_reviewed_at }] as const;
++      } catch {
++        return [report.id, { released_to_patient: ["approved", "completed"].includes(report.status), patient_reviewed_at: null }] as const;
++      }
++    }));
++    setPatientAccessByReport(Object.fromEntries(accessEntries));
+   };
+ 
+   const selectAssessment = async (assessment: AssessmentSession) => {
+@@ -195,6 +210,36 @@
+     });
+   };
+ 
++  const saveClinicianGuidance = async (report: Report) => {
++    const guidance = (guidanceByReport[report.id] || "").trim();
++    await run("save clinician guidance", async () => {
++      if (!reviewByReport.has(report.id)) {
++        await submitReportForReview(report.assessment_id, report.id);
++      }
++      const status = report.status === "completed" ? "completed" : report.status === "approved" ? "approved" : "pending";
++      await updateReportReview(report.assessment_id, report.id, status, guidance || undefined, "Clinician-authored patient guidance");
++      await refreshReportData(report.assessment_id);
++      setMessage("Clinician guidance saved.");
++    });
++  };
++
++  const releaseReportToPatient = async (report: Report) => {
++    const guidance = (guidanceByReport[report.id] || "").trim();
++    await run("release report to patient", async () => {
++      if (!reviewByReport.has(report.id)) await submitReportForReview(report.assessment_id, report.id);
++      await updateReportReview(report.assessment_id, report.id, "completed", guidance || "Reviewed by clinician and released to the patient.", "Patient-facing report release");
++      await refreshReportData(report.assessment_id);
++      setMessage("Report approved and released to the patient account.");
++    });
++  };
++
++  const preparedByLabel = (report: Report) => {
++    const raw = report.created_by ?? report.generated_by;
++    const userId = raw === null || raw === undefined ? NaN : Number(raw);
++    const matched = Number.isFinite(userId) ? users.find((item) => item.id === userId) : undefined;
++    return matched?.full_name || matched?.username || (raw ? `User #${raw}` : "CareSphere");
++  };
++
+   const submitReport = async (report: Report) => {
+     if (!selectedAssessment) return;
+     await run("submit report for review", async () => {
+@@ -214,7 +259,7 @@
+         selectedAssessment.id,
+         report.id,
+         action === "approve" ? "approved" : "rejected",
+-        action === "approve" ? "Report reviewed and approved by clinician." : "Report reviewed and rejected by clinician.",
++        action === "approve" ? ((guidanceByReport[report.id] || "").trim() || "Report reviewed and approved by clinician.") : "Report reviewed and rejected by clinician.",
+       );
+       await refreshReportData(selectedAssessment.id);
+       setMessage(`Report ${action === "approve" ? "approved" : "rejected"}.`);
+@@ -366,10 +411,23 @@
+                         <div style={{ padding: 11, borderRadius: 11, background: "#f0fdfa" }}><div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Report type</div><div style={{ marginTop: 4, color: "#102a43", fontSize: 12 }}>{humanize(report.report_type)}</div></div>
+                         <div style={{ padding: 11, borderRadius: 11, background: "#eff6ff" }}><div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Generated by</div><div style={{ marginTop: 4, color: "#102a43", fontSize: 12 }}>{report.generated_by || "CareSphere"}</div></div>
+                         <div style={{ padding: 11, borderRadius: 11, background: "#f8fafc" }}><div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>AI generated</div><div style={{ marginTop: 4, color: "#102a43", fontSize: 12 }}>{report.ai_generated ? "Yes" : "No"}</div></div>
++                        {user?.role === "administrator" && <div style={{ padding: 11, borderRadius: 11, background: "#fff7ed" }}><div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Prepared by</div><div style={{ marginTop: 4, color: "#102a43", fontSize: 12 }}>{preparedByLabel(report)}</div></div>}
++                        {user?.role === "administrator" && <div style={{ padding: 11, borderRadius: 11, background: "#eefcf7" }}><div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Patient review</div><div style={{ marginTop: 4, color: "#102a43", fontSize: 12 }}>{patientAccessByReport[report.id]?.patient_reviewed_at ? `Reviewed ${new Date(patientAccessByReport[report.id].patient_reviewed_at as string).toLocaleString()}` : "Not yet reviewed"}</div></div>}
+                       </div>
+ 
+                       {report.recommendations_summary && <div style={{ marginTop: 12, padding: 12, borderRadius: 11, background: "#f8fafc", color: "#334e68", fontSize: 12, whiteSpace: "pre-wrap", lineHeight: 1.55 }}><strong style={{ color: "#102a43" }}>Recommendations summary</strong><div style={{ marginTop: 5 }}>{report.recommendations_summary}</div></div>}
+ 
++                      {user?.role === "clinician" && (
++                        <div style={{ marginTop: 13, padding: 13, borderRadius: 13, background: "linear-gradient(135deg, #f0fdfa, #eff6ff)", border: "1px solid #cceee9" }}>
++                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
++                            <div><strong style={{ color: "#102a43", fontSize: 13 }}>Clinician guidance for the patient</strong><div style={{ marginTop: 3, color: "#627d98", fontSize: 11 }}>Add your personal recommendation alongside the existing AI analysis.</div></div>
++                            <span style={{ color: "#0f766e", fontSize: 10, fontWeight: 850 }}>Clinician-authored</span>
++                          </div>
++                          <textarea value={guidanceByReport[report.id] || ""} onChange={(event) => setGuidanceByReport((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="e.g. Please arrange a routine check-up, follow the care plan discussed, or contact a health professional if symptoms persist." style={{ ...input, minHeight: 92, marginTop: 10, resize: "vertical" }} />
++                        </div>
++                      )}
++                      {patientAccessByReport[report.id]?.released_to_patient && <div style={{ marginTop: 12, padding: 11, borderRadius: 11, background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#047857", fontSize: 12, fontWeight: 750 }}>Patient access enabled{patientAccessByReport[report.id]?.patient_reviewed_at ? ` · reviewed ${new Date(patientAccessByReport[report.id].patient_reviewed_at as string).toLocaleString()}` : " · awaiting patient review"}</div>}
++
+                       <details style={{ marginTop: 12 }}>
+                         <summary style={{ cursor: "pointer", color: "#0f766e", fontWeight: 800, fontSize: 12 }}>View full report content</summary>
+                         <pre style={{ margin: "9px 0 0", padding: 13, borderRadius: 11, background: "#0f172a", color: "#e2e8f0", overflowX: "auto", fontSize: 11, lineHeight: 1.55 }}>{reportText}</pre>
+@@ -378,6 +436,9 @@
+                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 13, alignItems: "center" }}>
+                         {review && <span style={statusStyle(review.review_status)}>Review: {humanize(review.review_status)}</span>}
+                         {!review && report.status === "draft" && <button type="button" disabled={Boolean(busy)} onClick={() => void submitReport(report)} style={secondaryButton}>{busy === "submit report for review" ? "Submitting..." : "Submit for Review"}</button>}
++                        {user?.role === "clinician" && review && <button type="button" disabled={Boolean(busy)} onClick={() => void saveClinicianGuidance(report)} style={secondaryButton}>Save guidance</button>}
++                        {user?.role === "clinician" && ["draft", "pending_review", "awaiting_review", "approved"].includes(report.status) && <button type="button" disabled={Boolean(busy)} onClick={() => void releaseReportToPatient(report)} style={primaryButton}>{busy === "release report to patient" ? "Releasing..." : "Approve & Release to Patient"}</button>}
++                        {user?.role === "clinician" && report.status === "completed" && <span style={{ ...statusStyle("completed"), background: "#eff6ff", color: "#0369a1" }}>Released</span>}
+                         {review?.review_status === "pending" && <>
+                           <button type="button" disabled={Boolean(busy)} onClick={() => void reviewReport(report, "approve")} style={primaryButton}>Approve Report</button>
+                           <button type="button" disabled={Boolean(busy)} onClick={() => void reviewReport(report, "reject")} style={secondaryButton}>Reject Report</button>
+=== PatientPortal.tsx ===
+--- /mnt/data/batch9_validation/frontend/src/PatientPortal.tsx	2026-09-28 06:07:42.000000000 +0000
++++ /mnt/data/CareSphere_Batch10_Work/frontend/src/PatientPortal.tsx	2026-09-28 23:22:10.925062953 +0000
+@@ -8,6 +8,7 @@
+   addMyMedication,
+   addMyVitalSigns,
+   getMyCareSummary,
++  markMyReportReviewed,
+   updateMyPatientProfile,
+   type PatientCareSummary,
+ } from "./api/patientPortal";
+@@ -21,6 +22,11 @@
+ 
+ function FormRow({ children }: { children: React.ReactNode }) { return <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "14px" }}>{children}</div>; }
+ 
++function stringifyReportContent(value: unknown) {
++  if (typeof value === "string") return value;
++  try { return JSON.stringify(value, null, 2); } catch { return String(value ?? ""); }
++}
++
+ export default function PatientPortal() {
+   const [profile, setProfile] = useState<PatientProfile | null>(null);
+   const [care, setCare] = useState<PatientCareSummary | null>(null);
+@@ -31,6 +37,7 @@
+   const [message, setMessage] = useState("");
+   const [error, setError] = useState("");
+   const [section, setSection] = useState<string | null>(null);
++  const [reviewingReportId, setReviewingReportId] = useState<number | null>(null);
+ 
+   const [personal, setPersonal] = useState({ first_name: "", last_name: "", date_of_birth: "", sex: "", marital_status: "", occupation: "", preferred_language: "", residence: "", district: "", country: "" });
+   const [contact, setContact] = useState({ phone: "", email: "", address: "", next_of_kin: "", next_of_kin_phone: "", emergency_contact: "", emergency_phone: "", relationship: "" });
+@@ -68,6 +75,21 @@
+     }
+   };
+ 
++  const handleReportReviewed = async (reportId: number) => {
++    setReviewingReportId(reportId);
++    setError("");
++    setMessage("");
++    try {
++      await markMyReportReviewed(reportId);
++      await load();
++      setMessage("Report marked as reviewed.");
++    } catch (err: any) {
++      setError(err?.response?.data?.detail || "Unable to mark this report as reviewed.");
++    } finally {
++      setReviewingReportId(null);
++    }
++  };
++
+   if (loading) return <section style={card}><h1 style={{ marginTop: 0 }}>My Health</h1><p style={{ color: "#627d98" }}>Loading your secure patient portal...</p></section>;
+   if (error || !profile) return <section style={card}><h1 style={{ marginTop: 0 }}>My Health</h1><p style={{ color: "#be123c" }}>{error || "Patient record unavailable."}</p></section>;
+ 
+@@ -128,7 +150,46 @@
+         <section style={card}><h3 style={{ margin: 0, color: "#102a43" }}>Contact & emergency information</h3><p style={{ color: "#627d98", fontSize: "13px" }}>{profile.contacts.length} contact record{profile.contacts.length === 1 ? "" : "s"} on file.</p><button onClick={() => setSection(section === "contact" ? null : "contact")} style={{ border: "1px solid #cfe0e6", background: "#fff", borderRadius: "10px", padding: "9px 12px", fontWeight: 750 }}>{section === "contact" ? "Close" : "Add / update contact"}</button>{section === "contact" && <div style={{ marginTop: 15, display: "grid", gap: 12 }}><FormRow><input style={field} placeholder="Phone" value={contact.phone} onChange={e => setContact({ ...contact, phone: e.target.value })} /><input style={field} placeholder="Email" value={contact.email} onChange={e => setContact({ ...contact, email: e.target.value })} /></FormRow><FormRow><input style={field} placeholder="Next of kin" value={contact.next_of_kin} onChange={e => setContact({ ...contact, next_of_kin: e.target.value })} /><input style={field} placeholder="Next of kin phone" value={contact.next_of_kin_phone} onChange={e => setContact({ ...contact, next_of_kin_phone: e.target.value })} /></FormRow><FormRow><input style={field} placeholder="Emergency contact" value={contact.emergency_contact} onChange={e => setContact({ ...contact, emergency_contact: e.target.value })} /><input style={field} placeholder="Emergency phone" value={contact.emergency_phone} onChange={e => setContact({ ...contact, emergency_phone: e.target.value })} /></FormRow><input style={field} placeholder="Relationship" value={contact.relationship} onChange={e => setContact({ ...contact, relationship: e.target.value })} /><button disabled={saving} onClick={() => { const fn = profile.contacts[0] ? async () => { const r = await import("./api/patientPortal"); return r.updateMyContact((profile.contacts[0] as any).id, contact); } : () => addMyContact(contact); save(fn); }} style={{ border: 0, background: "#0f766e", color: "#fff", borderRadius: 10, padding: 10, fontWeight: 800 }}>Save contact</button></div>}</section>
+       </div>
+ 
+-      <section style={card}><div style={{ marginBottom: 14 }}><h2 style={{ margin: 0, color: "#102a43" }}>CareSphere clinical review</h2><p style={{ margin: "5px 0 0", color: "#627d98", fontSize: 13 }}>Your submitted health information can be considered by the clinical team and the existing AI decision-support workflow.</p></div>{care?.recommendations.length ? <div style={{ display: "grid", gap: 10 }}>{care.recommendations.map(r => <div key={r.id} style={{ padding: 14, borderRadius: 13, background: "#f0fdfa", border: "1px solid #ccfbf1" }}><b style={{ color: "#102a43" }}>{r.title}</b><p style={{ margin: "6px 0 0", color: "#334e68", lineHeight: 1.5 }}>{r.recommendation_text}</p></div>)}</div> : <div style={{ padding: 16, borderRadius: 13, background: "#f8fafc", color: "#64748b" }}>No clinician-approved recommendations are available yet.</div>}</section>
++      <section style={card}>
++        <div style={{ marginBottom: 16 }}>
++          <div style={{ color: "#0f766e", fontSize: 11, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.08em" }}>Your care updates</div>
++          <h2 style={{ margin: "3px 0 5px", color: "#102a43" }}>Clinician recommendations & health reports</h2>
++          <p style={{ margin: 0, color: "#627d98", fontSize: 13 }}>Reports are shown here after clinician review. AI analysis is supporting information, while clinician guidance is clearly identified as authored by your care team.</p>
++        </div>
++        <div style={{ display: "grid", gap: 14 }}>
++          <div>
++            <h3 style={{ margin: "0 0 9px", color: "#102a43" }}>Clinician-approved recommendations</h3>
++            {care?.recommendations.length ? <div style={{ display: "grid", gap: 10 }}>{care.recommendations.map(r => <div key={r.id} style={{ padding: 14, borderRadius: 13, background: "#f0fdfa", border: "1px solid #ccfbf1" }}>
++              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}><b style={{ color: "#102a43" }}>{r.title}</b><span style={{ padding: "5px 8px", borderRadius: 999, background: r.ai_generated ? "#eef2ff" : "#ecfdf5", color: r.ai_generated ? "#4338ca" : "#047857", fontSize: 10, fontWeight: 850 }}>{r.ai_generated ? "AI-assisted" : "Care team"}</span></div>
++              <p style={{ margin: "7px 0 0", color: "#334e68", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{r.recommendation_text}</p>
++              {r.source_type && <div style={{ marginTop: 7, color: "#64748b", fontSize: 10 }}>Source: {r.source_type.replace(/_/g, " ")}</div>}
++            </div>)}</div> : <div style={{ padding: 16, borderRadius: 13, background: "#f8fafc", color: "#64748b", fontSize: 13 }}>No clinician-approved recommendations are available yet.</div>}
++          </div>
++          <div>
++            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}><h3 style={{ margin: 0, color: "#102a43" }}>Periodic health reports</h3><span style={{ color: "#64748b", fontSize: 11 }}>{care?.reports.length || 0} available</span></div>
++            {care?.reports.length ? <div style={{ display: "grid", gap: 12, marginTop: 10 }}>{care.reports.map(report => {
++              const reviewed = Boolean(report.patient_reviewed_at);
++              return <article key={report.id} style={{ padding: 16, borderRadius: 15, border: "1px solid #dfeaec", background: "linear-gradient(145deg,#ffffff,#f8fcfc)" }}>
++                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
++                  <div><div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap" }}><strong style={{ color: "#102a43", fontSize: 15 }}>{report.report_title}</strong><span style={{ padding: "5px 8px", borderRadius: 999, background: "#ecfdf5", color: "#047857", fontSize: 10, fontWeight: 850 }}>{report.status === "completed" ? "Released" : "Approved"}</span></div><div style={{ marginTop: 5, color: "#64748b", fontSize: 11 }}>Assessment {report.assessment_id} · {new Date(report.generated_at).toLocaleString()} · Version {report.version}</div></div>
++                  <span style={{ color: "#64748b", fontSize: 10 }}>{report.ai_generated ? "AI-assisted report" : "Clinical report"}</span>
++                </div>
++                <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
++                  {report.executive_summary && <div style={{ padding: 12, borderRadius: 12, background: "#f0fdfa", color: "#334e68", fontSize: 12, lineHeight: 1.55 }}><strong style={{ color: "#102a43" }}>Health analysis summary</strong><div style={{ marginTop: 5, whiteSpace: "pre-wrap" }}>{report.executive_summary}</div></div>}
++                  {report.recommendations_summary && <div style={{ padding: 12, borderRadius: 12, background: "#f8fafc", color: "#334e68", fontSize: 12, lineHeight: 1.55 }}><strong style={{ color: "#102a43" }}>AI / report recommendations</strong><div style={{ marginTop: 5, whiteSpace: "pre-wrap" }}>{report.recommendations_summary}</div></div>}
++                  {report.clinician_guidance && <div style={{ padding: 13, borderRadius: 12, background: "linear-gradient(135deg,#fff7ed,#fffbeb)", border: "1px solid #fed7aa", color: "#7c2d12", fontSize: 12, lineHeight: 1.55 }}><div style={{ fontWeight: 850, color: "#9a3412" }}>Your clinician's additional guidance</div><div style={{ marginTop: 5, whiteSpace: "pre-wrap" }}>{report.clinician_guidance}</div></div>}
++                  <details><summary style={{ cursor: "pointer", color: "#0f766e", fontSize: 12, fontWeight: 800 }}>View full health analysis report</summary><pre style={{ margin: "9px 0 0", padding: 12, borderRadius: 11, background: "#0f172a", color: "#e2e8f0", overflowX: "auto", fontSize: 10, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{stringifyReportContent(report.report_content)}</pre></details>
++                  {report.limitations && <div style={{ color: "#7b8da1", fontSize: 10, lineHeight: 1.45 }}>Report note: {report.limitations}</div>}
++                </div>
++                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 13, paddingTop: 11, borderTop: "1px solid #e6eef2" }}>
++                  <div style={{ color: "#64748b", fontSize: 10 }}>{reviewed ? `Reviewed ${new Date(report.patient_reviewed_at as string).toLocaleString()}` : "Not yet marked as reviewed"}</div>
++                  <button type="button" disabled={reviewed || reviewingReportId === report.id} onClick={() => void handleReportReviewed(report.id)} style={{ border: 0, borderRadius: 10, padding: "9px 12px", background: reviewed ? "#e2e8f0" : "linear-gradient(135deg,#0f766e,#0ea5a4)", color: reviewed ? "#64748b" : "#fff", fontWeight: 850, cursor: reviewed ? "default" : "pointer" }}>{reviewingReportId === report.id ? "Saving..." : reviewed ? "Reviewed" : "Mark as reviewed"}</button>
++                </div>
++              </article>;
++            })}</div> : <div style={{ marginTop: 10, padding: 16, borderRadius: 13, background: "#f8fafc", color: "#64748b", fontSize: 13 }}>No released health reports are available yet. Your care team will publish them here after review.</div>}
++          </div>
++        </div>
++      </section>
+     </div>
+   );
+ }
+=== api/clinical.ts ===
+--- /mnt/data/batch9_validation/frontend/src/api/clinical.ts	2026-09-28 07:19:22.000000000 +0000
++++ /mnt/data/CareSphere_Batch10_Work/frontend/src/api/clinical.ts	2026-09-28 23:21:33.701973093 +0000
+@@ -96,6 +96,14 @@
+   };
+ }
+ 
++export interface ReportPatientAccess {
++  report_id: number;
++  patient_id: number;
++  released_to_patient: boolean;
++  patient_reviewed_at: string | null;
++  last_viewed_at: string | null;
++}
++
+ export interface AIClinicalSummaryResponse {
+   success: boolean;
+   patient_id: number;
+@@ -263,6 +271,11 @@
+   return response.data;
+ }
+ 
++export async function getReportPatientAccess(reportId: number) {
++  const response = await api.get<ReportPatientAccess>(`/assessments/reports/${reportId}/patient-access`);
++  return response.data;
++}
++
+ export async function generatePatientClinicalSummary(
+   patientId: number,
+   data = {
+=== api/patientPortal.ts ===
+--- /mnt/data/batch9_validation/frontend/src/api/patientPortal.ts	2026-09-27 21:26:52.000000000 +0000
++++ /mnt/data/CareSphere_Batch10_Work/frontend/src/api/patientPortal.ts	2026-09-28 23:22:51.712632118 +0000
+@@ -88,12 +88,22 @@
+   }>;
+   reports: Array<{
+     id: number;
++    assessment_id: number;
+     report_type: string;
+     report_title: string;
++    report_content: unknown;
+     executive_summary: string | null;
+     recommendations_summary: string | null;
++    limitations: string | null;
++    generated_by: string | null;
++    ai_generated: boolean;
++    version: number;
+     status: string;
+     generated_at: string;
++    clinician_id: number | null;
++    clinician_guidance: string | null;
++    clinician_review_status: string | null;
++    patient_reviewed_at: string | null;
+   }>;
+ }
+ 
+@@ -177,3 +187,9 @@
+ }
+ 
+ export type { PatientProfile };
++
++
++export async function markMyReportReviewed(reportId: number) {
++  const response = await api.post<{ report_id: number; reviewed_at: string | null }>(`/patient/me/reports/${reportId}/reviewed`);
++  return response.data;
++}
+=== backend/app/models/__init__.py ===
+--- /mnt/data/batch10_backend_ref/CareSphere_backend_RBAC_v2_UserManagement/app/models/__init__.py	2026-09-27 17:37:27.000000000 +0000
++++ /mnt/data/CareSphere_Batch10_Work/backend/app/models/__init__.py	2026-09-28 23:20:31.604994085 +0000
+@@ -1,19 +1,20 @@
+-from app.models.user import User
+-from app.models.patient import Patient
+-from app.models.patient_contacts import PatientContact
+-from app.models.medical_history import MedicalHistory
+-from app.models.allergies import Allergy
+-from app.models.medications import Medication
+-from app.models.vital_signs import VitalSign
+-from app.models.lifestyle import Lifestyle
+-from app.models.assessment_sessions import AssessmentSession
+-from app.models.health_concerns import HealthConcern
+-from app.models.assessment_questions import AssessmentQuestion
+-from app.models.assessment_answers import AssessmentAnswer
+-from app.models.recommendations import Recommendation
+-from app.models.reports import Report
+-from app.models.clinician_reviews import ClinicianReview
+-from app.models.audit_logs import AuditLog
+-from app.models.schema_versions import SchemaVersion
+-from app.models.notifications import Notification
+-from app.models.clinician_assignments import ClinicianAssignment
+\ No newline at end of file
++from app.models.user import User
++from app.models.patient import Patient
++from app.models.patient_contacts import PatientContact
++from app.models.medical_history import MedicalHistory
++from app.models.allergies import Allergy
++from app.models.medications import Medication
++from app.models.vital_signs import VitalSign
++from app.models.lifestyle import Lifestyle
++from app.models.assessment_sessions import AssessmentSession
++from app.models.health_concerns import HealthConcern
++from app.models.assessment_questions import AssessmentQuestion
++from app.models.assessment_answers import AssessmentAnswer
++from app.models.recommendations import Recommendation
++from app.models.reports import Report
++from app.models.clinician_reviews import ClinicianReview
++from app.models.audit_logs import AuditLog
++from app.models.schema_versions import SchemaVersion
++from app.models.notifications import Notification
++from app.models.clinician_assignments import ClinicianAssignment
++from app.models.patient_report_access import PatientReportAccess
+=== backend/app/routes/patient_portal.py ===
+--- /mnt/data/batch10_backend_ref/CareSphere_backend_RBAC_v2_UserManagement/app/routes/patient_portal.py	2026-09-27 17:38:13.000000000 +0000
++++ /mnt/data/CareSphere_Batch10_Work/backend/app/routes/patient_portal.py	2026-09-28 23:20:31.605107726 +0000
+@@ -15,6 +15,7 @@
+ from app.models.patient import Patient
+ from app.models.patient_contacts import PatientContact
+ from app.models.patient_user_links import PatientUserLink
++from app.models.patient_report_access import PatientReportAccess
+ from app.models.recommendations import Recommendation
+ from app.models.reports import Report
+ from app.models.user import User
+@@ -217,6 +218,55 @@
+     return record
+ 
+ 
++@router.post("/reports/{report_id}/reviewed")
++def mark_my_report_reviewed(
++    report_id: int,
++    current_user: User = Depends(require_roles("patient")),
++    db: Session = Depends(get_db),
++):
++    patient = get_linked_patient(current_user, db)
++    report = db.get(Report, report_id)
++    if report is None:
++        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
++
++    assessment = db.get(AssessmentSession, report.assessment_id)
++    if assessment is None or assessment.patient_id != patient.id:
++        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This report is not part of your patient record")
++
++    if str(report.status).lower() not in {"approved", "completed"}:
++        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This report is not yet released for patient access")
++
++    now = datetime.now(timezone.utc)
++    access = db.scalar(select(PatientReportAccess).where(PatientReportAccess.report_id == report_id))
++    if access is None:
++        access = PatientReportAccess(
++            patient_id=patient.id,
++            report_id=report_id,
++            reviewed_at=now,
++            last_viewed_at=now,
++            created_at=now,
++            updated_at=now,
++        )
++        db.add(access)
++    else:
++        access.patient_id = patient.id
++        access.reviewed_at = access.reviewed_at or now
++        access.last_viewed_at = now
++        access.updated_at = now
++
++    create_audit_log(
++        db=db,
++        user_id=current_user.id,
++        action="review",
++        entity_type="Report",
++        entity_id=report.id,
++        description="Patient marked released clinical report as reviewed",
++    )
++    db.commit()
++    db.refresh(access)
++    return {"report_id": report.id, "reviewed_at": access.reviewed_at}
++
++
+ @router.get("/care-summary")
+ def get_my_care_summary(
+     current_user: User = Depends(require_roles("patient")),
+@@ -227,7 +277,7 @@
+     approved_review_exists = exists(
+         select(ClinicianReview.id).where(
+             ClinicianReview.recommendation_id == Recommendation.id,
+-            ClinicianReview.review_status == "approved",
++            ClinicianReview.review_status.in_(["approved", "completed"]),
+         )
+     )
+ 
+@@ -251,6 +301,28 @@
+         .order_by(Report.id.desc())
+     ).all()
+ 
++    report_ids = [row.id for row in report_rows]
++    review_map = {}
++    if report_ids:
++        reviews = db.scalars(
++            select(ClinicianReview)
++            .where(ClinicianReview.report_id.in_(report_ids))
++            .order_by(ClinicianReview.id.desc())
++        ).all()
++        for review in reviews:
++            review_map.setdefault(review.report_id, review)
++
++    access_map = {}
++    if report_ids:
++        accesses = db.scalars(
++            select(PatientReportAccess)
++            .where(
++                PatientReportAccess.patient_id == patient.id,
++                PatientReportAccess.report_id.in_(report_ids),
++            )
++        ).all()
++        access_map = {item.report_id: item for item in accesses}
++
+     return {
+         "recommendations": jsonable_encoder([
+             {
+@@ -268,12 +340,22 @@
+         "reports": jsonable_encoder([
+             {
+                 "id": row.id,
++                "assessment_id": row.assessment_id,
+                 "report_type": row.report_type,
+                 "report_title": row.report_title,
++                "report_content": row.report_content,
+                 "executive_summary": row.executive_summary,
+                 "recommendations_summary": row.recommendations_summary,
++                "limitations": row.limitations,
++                "generated_by": row.generated_by,
++                "ai_generated": row.ai_generated,
++                "version": row.version,
+                 "status": row.status,
+                 "generated_at": row.generated_at,
++                "clinician_id": review_map[row.id].clinician_id if row.id in review_map else None,
++                "clinician_guidance": review_map[row.id].clinical_comment if row.id in review_map else None,
++                "clinician_review_status": review_map[row.id].review_status if row.id in review_map else None,
++                "patient_reviewed_at": access_map[row.id].reviewed_at if row.id in access_map else None,
+             }
+             for row in report_rows
+         ]),
+=== backend/app/routes/report.py ===
+--- /mnt/data/batch10_backend_ref/CareSphere_backend_RBAC_v2_UserManagement/app/routes/report.py	2026-09-27 17:37:27.000000000 +0000
++++ /mnt/data/CareSphere_Batch10_Work/backend/app/routes/report.py	2026-09-28 23:20:31.605166855 +0000
+@@ -7,6 +7,7 @@
+ from app.database import SessionLocal
+ from app.models.assessment_sessions import AssessmentSession
+ from app.models.reports import Report
++from app.models.patient_report_access import PatientReportAccess
+ from app.models.user import User
+ from app.schemas.report import (
+     ReportCreate,
+@@ -207,4 +208,29 @@
+             report=report,
+         )
+ 
+-    return report
+\ No newline at end of file
++    return report
++
++@router.get("/reports/{report_id}/patient-access")
++def get_report_patient_access(
++    report_id: int,
++    current_user: User = Depends(require_roles("administrator", "clinician")),
++    db: Session = Depends(get_db),
++):
++    report = db.get(Report, report_id)
++    if report is None:
++        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
++
++    assessment = db.get(AssessmentSession, report.assessment_id)
++    if assessment is None:
++        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assessment not found")
++
++    access = db.scalar(
++        select(PatientReportAccess).where(PatientReportAccess.report_id == report_id)
++    )
++    return {
++        "report_id": report.id,
++        "patient_id": assessment.patient_id,
++        "released_to_patient": str(report.status).lower() in {"approved", "completed"},
++        "patient_reviewed_at": access.reviewed_at if access else None,
++        "last_viewed_at": access.last_viewed_at if access else None,
++    }
+=== backend/app/routes/risk_assessment.py ===
+--- /mnt/data/batch10_backend_ref/CareSphere_backend_RBAC_v2_UserManagement/app/routes/risk_assessment.py	2026-09-27 17:37:27.000000000 +0000
++++ /mnt/data/CareSphere_Batch10_Work/backend/app/routes/risk_assessment.py	2026-09-28 23:20:31.605256471 +0000
+@@ -243,6 +243,8 @@
+     review.review_status = review_status
+     review.clinical_comment = clinical_comment
+     review.modification_notes = modification_notes
++    if review_status in {"approved", "rejected", "completed"}:
++        review.reviewed_at = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+ 
+     if review_status in {
+         "approved",
+@@ -512,6 +514,8 @@
+     review.review_status = review_status
+     review.clinical_comment = clinical_comment
+     review.modification_notes = modification_notes
++    if review_status in {"approved", "rejected", "completed"}:
++        review.reviewed_at = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+ 
+     # --------------------------------------------------------
+     # Update report status
+=== NEW backend/app/models/patient_report_access.py ===
+from datetime import datetime
+
+from sqlalchemy import BigInteger, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database import Base
+
+
+class PatientReportAccess(Base):
+    __tablename__ = "patient_report_access"
+    __table_args__ = (
+        UniqueConstraint("report_id", name="uq_patient_report_access_report"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    patient_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patients.id"), nullable=False)
+    report_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("reports.id"), nullable=False)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

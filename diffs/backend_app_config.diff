@@ -1,0 +1,13 @@
+--- existing backend/app/config.py
++++ deployment/backend/config.py
+@@
+     access_token_expire_minutes: int = 30
++
++    # Browser origins allowed to call the API.
++    # Comma-separated production frontend origins.
++    cors_origins: str = ""
+@@
+-    ai_provider: str = "openai"
+-    ai_model: str = ""
++    ai_provider: str = "gemini"
++    ai_model: str = "gemini-3.8-flash"

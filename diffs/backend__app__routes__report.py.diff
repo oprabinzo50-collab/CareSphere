@@ -1,0 +1,200 @@
+--- baseline/backend/app/routes/report.py
+
++++ batch19/backend/app/routes/report.py
+
+@@ -1,19 +1,21 @@
+
+ from datetime import datetime, timezone
+ 
+ from fastapi import APIRouter, Depends, HTTPException, status
+-from sqlalchemy import select
++from sqlalchemy import func, select
+ from sqlalchemy.orm import Session
+ 
+ from app.database import SessionLocal
+ from app.models.assessment_sessions import AssessmentSession
+ from app.models.clinician_reviews import ClinicianReview
+ from app.models.patient_report_access import PatientReportAccess
++from app.models.patient import Patient
+ from app.models.reports import Report
+ from app.models.user import User
+ from app.schemas.report import (
+     ReportCreate,
+     ReportResponse,
+     ReportUpdate,
++    ReviewedReportResponse,
+ )
+ from app.security.permissions import require_roles
+ from app.services.report_notification_automation import (
+@@ -153,6 +155,86 @@
+
+ 
+ 
+ @router.get(
++    "/reports/reviewed",
++    response_model=list[ReviewedReportResponse],
++)
++def list_reviewed_reports(
++    limit: int = 50,
++    current_user: User = Depends(require_roles("administrator")),
++    db: Session = Depends(get_db),
++):
++    """Return reports that have reached a completed clinician review action.
++
++    The endpoint is administrator-only and does not create a second report
++    record. It reads the existing report, latest clinician review, linked
++    patient, and patient-access state.
++    """
++    safe_limit = max(1, min(limit, 200))
++    latest_review_id = (
++        select(func.max(ClinicianReview.id))
++        .where(ClinicianReview.report_id == Report.id)
++        .correlate(Report)
++        .scalar_subquery()
++    )
++
++    statement = (
++        select(Report, ClinicianReview, Patient, User)
++        .join(AssessmentSession, Report.assessment_id == AssessmentSession.id)
++        .join(Patient, AssessmentSession.patient_id == Patient.id)
++        .join(ClinicianReview, ClinicianReview.id == latest_review_id)
++        .join(User, User.id == ClinicianReview.clinician_id)
++        .where(
++            ClinicianReview.review_status.in_(
++                {"reviewed", "approved", "rejected", "completed"}
++            )
++        )
++        .order_by(
++            ClinicianReview.reviewed_at.desc().nullslast(),
++            ClinicianReview.updated_at.desc(),
++            Report.id.desc(),
++        )
++        .limit(safe_limit)
++    )
++
++    results = []
++    for report, review, patient, clinician in db.execute(statement).all():
++        access = db.scalar(
++            select(PatientReportAccess)
++            .where(PatientReportAccess.report_id == report.id)
++        )
++        reviewed_at = review.reviewed_at or review.updated_at
++        report_payload = _report_response_payload(db, report)
++        results.append(
++            {
++                "report": report_payload,
++                "patient": {
++                    "id": patient.id,
++                    "patient_number": patient.patient_number,
++                    "first_name": patient.first_name,
++                    "last_name": patient.last_name,
++                    "date_of_birth": patient.date_of_birth,
++                    "sex": patient.sex,
++                    "district": patient.district,
++                    "country": patient.country,
++                    "status": patient.status,
++                },
++                "clinician": {
++                    "id": clinician.id,
++                    "full_name": clinician.full_name,
++                    "username": clinician.username,
++                },
++                "review_status": review.review_status,
++                "reviewed_at": reviewed_at,
++                "released_to_patient": bool(access) or report_payload["released_to_patient"],
++                "patient_reviewed_at": access.reviewed_at if access else None,
++                "last_viewed_at": access.last_viewed_at if access else None,
++            }
++        )
++
++    return results
++
++
++@router.get(
+     "/reports/{report_id}",
+     response_model=ReportResponse,
+ )
+@@ -173,6 +255,67 @@
+
+         )
+ 
+     return _report_response_payload(db, report)
++
++
++@router.delete(
++    "/reports/{report_id}",
++)
++def delete_report(
++    report_id: int,
++    current_user: User = Depends(require_roles("clinician")),
++    db: Session = Depends(get_db),
++):
++    """Remove a report and its report-specific workflow records.
++
++    Only clinicians can delete reports. The deletion is audited; report,
++    clinician-review, and patient-access rows are removed together so a
++    deleted report cannot remain visible in the patient portal.
++    """
++    report = db.get(Report, report_id)
++    if report is None:
++        raise HTTPException(
++            status_code=status.HTTP_404_NOT_FOUND,
++            detail="Report not found",
++        )
++
++    latest_review = db.scalar(
++        select(ClinicianReview)
++        .where(ClinicianReview.report_id == report_id)
++        .order_by(ClinicianReview.id.desc())
++    )
++    access = db.scalar(
++        select(PatientReportAccess)
++        .where(PatientReportAccess.report_id == report_id)
++    )
++
++    create_audit_log(
++        db=db,
++        user_id=current_user.id,
++        action="delete",
++        entity_type="Report",
++        entity_id=report.id,
++        description="Clinician deleted a clinical report and its patient-access/review records",
++        log_metadata={
++            "assessment_id": report.assessment_id,
++            "report_status": report.status,
++            "review_status": latest_review.review_status if latest_review else None,
++            "released_to_patient": bool(access) or str(report.status).lower() in {"approved", "completed"},
++        },
++    )
++
++    reviews = db.scalars(
++        select(ClinicianReview).where(ClinicianReview.report_id == report_id)
++    ).all()
++    for review in reviews:
++        db.delete(review)
++
++    if access is not None:
++        db.delete(access)
++
++    db.delete(report)
++    db.commit()
++
++    return {"deleted": True, "report_id": report_id}
+ 
+ 
+ @router.put(
+@@ -284,10 +427,11 @@
+
+             detail="Report does not belong to this assessment",
+         )
+ 
+-    if str(report.status).lower() == "rejected":
++    report_status = str(report.status).lower()
++    if report_status not in {"reviewed", "approved"}:
+         raise HTTPException(
+             status_code=status.HTTP_409_CONFLICT,
+-            detail="Rejected reports must be reviewed again before release",
++            detail="Review the report before approving and sending it to the patient",
+         )
+ 
+     now = datetime.now(timezone.utc)

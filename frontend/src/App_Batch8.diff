@@ -1,0 +1,196 @@
+--- /mnt/data/batch7_src/batch7_package/App.tsx	2026-09-28 22:04:19.000000000 +0000
++++ /mnt/data/batch8_src/App.tsx	2026-09-28 22:10:53.832409031 +0000
+@@ -42,6 +42,7 @@
+ import Icon from "./components/ui/Icon";
+ import PatientAvatar from "./components/PatientAvatar";
+ import MetricCard from "./components/ui/MetricCard";
++import WorkflowWorkspaceFrame from "./WorkflowWorkspaceFrame";
+ import { AuditLogsPage, CareGapsPage, FollowUpsPage, NotificationsPage } from "./components/workflow/WorkflowPages";
+ function Login() {
+   const navigate = useNavigate();
+@@ -273,6 +274,16 @@
+         { label: "Open reports", detail: "Review generated clinical reports", path: "/reports", icon: "file" as const },
+       ];
+ 
++  const assessmentCompletionRate = summary.assessments.total
++    ? Math.round((summary.assessments.completed / summary.assessments.total) * 100)
++    : 0;
++  const patientActivationRate = summary.patients.total
++    ? Math.round((summary.patients.active / summary.patients.total) * 100)
++    : 0;
++  const reviewClearanceRate = summary.clinician_reviews.total
++    ? Math.round((summary.clinician_reviews.approved / summary.clinician_reviews.total) * 100)
++    : 0;
++
+   return (
+     <div className="care-dashboard-page">
+       <section className="care-dashboard-hero">
+@@ -321,6 +332,30 @@
+           <span><strong>{summary.clinician_reviews.pending}</strong> pending reviews</span>
+         </div>
+       </section>
++
++
++      <section className="care-analytics-card" style={styles.panel}>
++        <div className="care-analytics-heading">
++          <div>
++            <div className="care-section-kicker">System analytics</div>
++            <h2 style={{ margin: "5px 0 0", color: "#102a43" }}>Operational health</h2>
++          </div>
++          <span className="care-analytics-note">Derived from existing dashboard data</span>
++        </div>
++        <div className="care-analytics-grid">
++          {[
++            { label: "Assessment completion", value: assessmentCompletionRate, detail: `${summary.assessments.completed} of ${summary.assessments.total} completed` },
++            { label: "Active patient ratio", value: patientActivationRate, detail: `${summary.patients.active} of ${summary.patients.total} active` },
++            { label: "Review clearance", value: reviewClearanceRate, detail: `${summary.clinician_reviews.approved} approved of ${summary.clinician_reviews.total}` },
++          ].map((metric, index) => (
++            <div key={metric.label} className="care-analytics-metric" style={{ animationDelay: `${index * 70}ms` }}>
++              <div className="care-analytics-metric-top"><span>{metric.label}</span><strong>{metric.value}%</strong></div>
++              <div className="care-analytics-track"><span style={{ width: `${metric.value}%` }} /></div>
++              <small>{metric.detail}</small>
++            </div>
++          ))}
++        </div>
++      </section>
+     </div>
+   );
+ }
+@@ -1679,6 +1714,7 @@
+   const [error, setError] = useState("");
+   const [success, setSuccess] = useState("");
+   const [editingUser, setEditingUser] = useState<CareUser | null>(null);
++  const [selectedUser, setSelectedUser] = useState<CareUser | null>(null);
+   const [form, setForm] = useState({
+     username: "",
+     password: "",
+@@ -1946,6 +1982,7 @@
+                   <td style={styles.td}>
+                     <div style={{ display: "flex", gap: "7px", flexWrap: "wrap" }}>
+                       <button type="button" onClick={() => beginEdit(record)} style={{ ...styles.searchButton, padding: "8px 11px" }}>Edit</button>
++                      <button type="button" onClick={() => setSelectedUser(record)} style={{ ...styles.searchButton, padding: "8px 11px", background: "#ffffff", color: "#0f766e", border: "1px solid #99f6e4" }}>View</button>
+                       <button type="button" disabled={record.id === currentUser?.id} onClick={() => changeStatus(record)} style={{ ...styles.searchButton, padding: "8px 11px", background: "#ffffff", color: "#334155", border: "1px solid #dbe4ea", opacity: record.id === currentUser?.id ? 0.55 : 1 }}>
+                         {record.status === "active" ? "Deactivate" : "Activate"}
+                       </button>
+@@ -1957,6 +1994,50 @@
+           </table>
+         </div>
+       </section>
++
++      {selectedUser && (
++        <section className="care-user-profile-drawer" style={styles.panel}>
++          <div className="care-user-profile-header">
++            <div>
++              <div className="care-section-kicker">Account profile</div>
++              <h2 style={{ margin: "4px 0 5px", color: "#102a43" }}>{selectedUser.full_name}</h2>
++              <p style={{ margin: 0, color: "#627d98", fontSize: 12 }}>@{selectedUser.username}</p>
++            </div>
++            <button type="button" onClick={() => setSelectedUser(null)} style={{ ...styles.searchButton, background: "#fff", color: "#334155", border: "1px solid #dbe4ea" }}>Close</button>
++          </div>
++          <div className="care-user-profile-body">
++            <div className="care-user-profile-identity">
++              {selectedUser.role === "patient" && selectedUser.patient_id && patientById.has(selectedUser.patient_id) ? (
++                <PatientAvatar
++                  patientId={selectedUser.patient_id}
++                  firstName={patientById.get(selectedUser.patient_id)?.first_name}
++                  lastName={patientById.get(selectedUser.patient_id)?.last_name}
++                  size={78}
++                  radius={22}
++                  label={`Patient photo for ${selectedUser.full_name}`}
++                />
++              ) : (
++                <div className="care-user-avatar care-user-avatar-large">
++                  {selectedUser.full_name?.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase() || "U"}
++                </div>
++              )}
++              <div>
++                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 7 }}>
++                  <span className="care-account-chip">{formatRole(selectedUser.role)}</span>
++                  <span className="care-account-chip">{humanizeValue(selectedUser.status)}</span>
++                </div>
++                <strong style={{ color: "#102a43" }}>{selectedUser.patient_id ? `Linked patient #${selectedUser.patient_id}` : "No linked patient record"}</strong>
++              </div>
++            </div>
++            <div className="care-user-detail-grid">
++              <div><span>Account ID</span><strong>{selectedUser.id}</strong></div>
++              <div><span>Created</span><strong>{new Date(selectedUser.created_at).toLocaleString()}</strong></div>
++              <div><span>Updated</span><strong>{new Date(selectedUser.updated_at).toLocaleString()}</strong></div>
++              <div><span>Last login</span><strong>{selectedUser.last_login_at ? new Date(selectedUser.last_login_at).toLocaleString() : "Never"}</strong></div>
++            </div>
++          </div>
++        </section>
++      )}
+     </div>
+   );
+ }
+@@ -2371,12 +2452,12 @@
+             <Route path="/clinical-review" element={user.role === "administrator" || user.role === "clinician" ? <ClinicalWorkspace /> : <Navigate to={homePath} replace />} />
+             <Route path="/clinical-reviews" element={user.role === "administrator" || user.role === "clinician" ? <ClinicalWorkspace /> : <Navigate to={homePath} replace />} />
+             <Route path="/care-team" element={user.role === "clinician" || user.role === "administrator" ? <Placeholder title="Care Team" /> : <Navigate to={homePath} replace />} />
+-            <Route path="/care-gaps" element={user.role === "clinician" || user.role === "administrator" ? <CareGapsPage /> : <Navigate to={homePath} replace />} />
+-            <Route path="/follow-ups" element={user.role === "clinician" || user.role === "administrator" ? <FollowUpsPage /> : <Navigate to={homePath} replace />} />
+-            <Route path="/notifications" element={user.role === "clinician" || user.role === "administrator" ? <NotificationsPage /> : <Navigate to={homePath} replace />} />
++            <Route path="/care-gaps" element={user.role === "clinician" || user.role === "administrator" ? <WorkflowWorkspaceFrame module="care-gaps"><CareGapsPage /></WorkflowWorkspaceFrame> : <Navigate to={homePath} replace />} />
++            <Route path="/follow-ups" element={user.role === "clinician" || user.role === "administrator" ? <WorkflowWorkspaceFrame module="follow-ups"><FollowUpsPage /></WorkflowWorkspaceFrame> : <Navigate to={homePath} replace />} />
++            <Route path="/notifications" element={user.role === "clinician" || user.role === "administrator" ? <WorkflowWorkspaceFrame module="notifications"><NotificationsPage /></WorkflowWorkspaceFrame> : <Navigate to={homePath} replace />} />
+             <Route path="/reports" element={user.role === "administrator" || user.role === "clinician" ? <ReportsWorkspace /> : <Navigate to={homePath} replace />} />
+-            <Route path="/users" element={user.role === "administrator" ? <UserManagement /> : <Navigate to={homePath} replace />} />
+-            <Route path="/audit-logs" element={user.role === "administrator" ? <AuditLogsPage /> : <Navigate to={homePath} replace />} />
++            <Route path="/users" element={user.role === "administrator" ? <WorkflowWorkspaceFrame module="users"><UserManagement /></WorkflowWorkspaceFrame> : <Navigate to={homePath} replace />} />
++            <Route path="/audit-logs" element={user.role === "administrator" ? <WorkflowWorkspaceFrame module="audit-logs"><AuditLogsPage /></WorkflowWorkspaceFrame> : <Navigate to={homePath} replace />} />
+             <Route path="*" element={<Navigate to={homePath} replace />} />
+           </Routes>
+         </main>
+@@ -2700,6 +2781,52 @@
+         .care-reports-page form { width:100%; }
+       }
+ 
++      .care-analytics-card { background:linear-gradient(145deg,rgba(255,255,255,0.98),rgba(247,252,252,0.95)); }
++      .care-analytics-heading { display:flex; justify-content:space-between; gap:16px; align-items:flex-end; flex-wrap:wrap; margin-bottom:14px; }
++      .care-analytics-note { color:#64748b; font-size:11px; font-weight:700; }
++      .care-analytics-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
++      .care-analytics-metric { padding:14px; border:1px solid rgba(148,163,184,0.15); border-radius:14px; background:#fff; box-shadow:0 8px 20px rgba(15,23,42,0.035); animation:careFadeUp 360ms ease both; }
++      .care-analytics-metric-top { display:flex; justify-content:space-between; gap:12px; align-items:center; }
++      .care-analytics-metric-top span { color:#64748b; font-size:11px; font-weight:800; }
++      .care-analytics-metric-top strong { color:#0f766e; font-size:20px; letter-spacing:-.03em; }
++      .care-analytics-track { height:7px; overflow:hidden; margin:11px 0 7px; border-radius:999px; background:#eaf1f4; }
++      .care-analytics-track span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#0f766e,#38bdf8); transition:width 450ms ease; }
++      .care-analytics-metric small { color:#7b8da1; font-size:10px; }
++      .care-workspace-frame { display:grid; gap:16px; animation:careFadeUp 420ms ease both; }
++      .care-workspace-hero { position:relative; overflow:hidden; display:flex; justify-content:space-between; gap:18px; align-items:center; flex-wrap:wrap; padding:22px 24px; border:1px solid rgba(20,184,166,0.15); border-radius:22px; background:linear-gradient(135deg,#ecfeff 0%,#ffffff 58%,#eff6ff 100%); box-shadow:0 18px 44px rgba(15,118,110,0.08); }
++      .care-workspace-hero::after { content:""; position:absolute; width:220px; height:220px; right:-80px; top:-100px; border-radius:50%; background:rgba(56,189,248,0.10); pointer-events:none; }
++      .care-workspace-hero-main { display:flex; align-items:center; gap:14px; min-width:0; position:relative; z-index:1; }
++      .care-workspace-icon { width:46px; height:46px; flex:0 0 auto; display:grid; place-items:center; border-radius:15px; background:linear-gradient(135deg,#ccfbf1,#dbeafe); color:#0f766e; box-shadow:0 10px 24px rgba(14,165,164,0.12); }
++      .care-workspace-title { margin:4px 0 5px; color:#102a43; font-size:clamp(23px,3vw,31px); letter-spacing:-.035em; }
++      .care-workspace-description { margin:0; max-width:820px; color:#627d98; font-size:13px; line-height:1.6; }
++      .care-workspace-status { display:inline-flex; align-items:center; gap:8px; padding:8px 11px; border-radius:999px; background:rgba(255,255,255,0.82); border:1px solid rgba(148,163,184,0.18); color:#0f766e; font-size:11px; font-weight:800; box-shadow:0 8px 20px rgba(15,23,42,0.05); position:relative; z-index:1; }
++      .care-workspace-pulse { padding:16px; border-radius:18px; border:1px solid rgba(148,163,184,0.16); background:rgba(255,255,255,0.90); box-shadow:0 12px 30px rgba(15,23,42,0.045); }
++      .care-workspace-pulse-heading { display:flex; justify-content:space-between; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
++      .care-workspace-pulse-note { color:#64748b; font-size:11px; font-weight:700; }
++      .care-workspace-pulse-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
++      .care-workspace-pulse-card { padding:13px; border-radius:14px; background:linear-gradient(145deg,#ffffff,#f7fbfc); border:1px solid rgba(148,163,184,0.15); box-shadow:0 8px 20px rgba(15,23,42,0.035); animation:careFadeUp 360ms ease both; }
++      .care-workspace-pulse-card span { display:block; color:#64748b; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
++      .care-workspace-pulse-card strong { display:block; margin-top:5px; color:#102a43; font-size:23px; letter-spacing:-.03em; }
++      .care-workspace-pulse-card small { display:block; margin-top:3px; color:#7b8da1; font-size:10px; }
++      .care-workspace-link-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
++      .care-workspace-link { min-width:0; display:flex; align-items:center; gap:8px; justify-content:flex-start; padding:10px 11px; border:1px solid rgba(148,163,184,0.16); border-radius:12px; background:#fff; color:#334e68; font-size:12px; font-weight:800; cursor:pointer; box-shadow:0 7px 18px rgba(15,23,42,0.035); }
++      .care-workspace-link:hover { border-color:rgba(20,184,166,0.28); background:#f8fffe; transform:translateY(-2px); box-shadow:0 12px 24px rgba(15,23,42,0.07); }
++      .care-workspace-link-icon { width:28px; height:28px; display:grid; place-items:center; flex:0 0 auto; border-radius:9px; background:#eff6ff; color:#2563eb; }
++      .care-workspace-link > svg { margin-left:auto; color:#94a3b8; }
++      .care-workspace-content { min-width:0; }
++      .care-user-profile-drawer { margin-top:16px; background:linear-gradient(145deg,#ffffff,#f7fbff); animation:careFadeUp 320ms ease both; }
++      .care-user-profile-header { display:flex; justify-content:space-between; gap:14px; align-items:center; flex-wrap:wrap; }
++      .care-user-profile-body { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,1.15fr); gap:18px; margin-top:16px; padding-top:16px; border-top:1px solid #e2e8f0; }
++      .care-user-profile-identity { display:flex; align-items:center; gap:14px; min-width:0; }
++      .care-user-avatar-large { width:78px !important; height:78px !important; border-radius:22px !important; font-size:25px !important; }
++      .care-account-chip { display:inline-flex; align-items:center; padding:6px 9px; border-radius:999px; background:#f0fdfa; border:1px solid #ccfbf1; color:#0f766e; font-size:11px; font-weight:800; }
++      .care-user-detail-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
++      .care-user-detail-grid > div { padding:11px 12px; border-radius:12px; background:#fff; border:1px solid rgba(148,163,184,0.14); }
++      .care-user-detail-grid span { display:block; color:#64748b; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
++      .care-user-detail-grid strong { display:block; margin-top:4px; color:#334e68; font-size:12px; line-height:1.4; word-break:break-word; }
++      @media (max-width:900px) { .care-workspace-pulse-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .care-workspace-link-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .care-user-profile-body { grid-template-columns:1fr; } .care-analytics-grid { grid-template-columns:1fr; } }
++      @media (max-width:600px) { .care-workspace-pulse-grid,.care-workspace-link-grid,.care-user-detail-grid { grid-template-columns:1fr; } .care-workspace-hero { padding:18px; } }
++
+       @media (prefers-reduced-motion: reduce) {
+         html { scroll-behavior: auto; }
+         *, *::before, *::after {

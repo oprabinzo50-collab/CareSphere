@@ -1,0 +1,86 @@
+--- /mnt/data/inspect17_current/b17_restore_package/backend/app/routes/report.py	2026-09-29 02:29:39.000000000 +0000
++++ /mnt/data/b18_build/backend/app/routes/report.py	2026-09-29 02:47:31.068508279 +0000
+@@ -36,6 +36,47 @@
+         db.close()
+ 
+ 
++def _report_response_payload(db: Session, report: Report) -> dict:
++    """Return report data plus latest clinician review and patient-access metadata."""
++    review = db.scalar(
++        select(ClinicianReview)
++        .where(
++            ClinicianReview.assessment_id == report.assessment_id,
++            ClinicianReview.report_id == report.id,
++        )
++        .order_by(ClinicianReview.id.desc())
++    )
++    access = db.scalar(
++        select(PatientReportAccess)
++        .where(PatientReportAccess.report_id == report.id)
++    )
++
++    return {
++        "id": report.id,
++        "assessment_id": report.assessment_id,
++        "report_type": report.report_type,
++        "report_title": report.report_title,
++        "report_content": report.report_content,
++        "executive_summary": report.executive_summary,
++        "recommendations_summary": report.recommendations_summary,
++        "limitations": report.limitations,
++        "generated_by": report.generated_by,
++        "ai_generated": report.ai_generated,
++        "version": report.version,
++        "status": report.status,
++        "generated_at": report.generated_at,
++        "created_by": report.created_by,
++        "updated_at": report.updated_at,
++        "clinician_id": review.clinician_id if review else None,
++        "clinician_guidance": review.clinical_comment if review else None,
++        "clinician_review_status": review.review_status if review else None,
++        "clinician_reviewed_at": review.reviewed_at if review else None,
++        "released_to_patient": bool(access) or str(report.status).lower() in {"approved", "completed"},
++        "patient_reviewed_at": access.reviewed_at if access else None,
++        "last_viewed_at": access.last_viewed_at if access else None,
++    }
++
++
+ @router.post(
+     "/{assessment_id}/reports",
+     response_model=ReportResponse,
+@@ -77,7 +118,7 @@
+         report=report,
+     )
+ 
+-    return report
++    return _report_response_payload(db, report)
+ 
+ 
+ @router.get(
+@@ -108,7 +149,7 @@
+         .order_by(Report.id.desc())
+     )
+ 
+-    return db.scalars(statement).all()
++    return [_report_response_payload(db, row) for row in db.scalars(statement).all()]
+ 
+ 
+ @router.get(
+@@ -131,7 +172,7 @@
+             detail="Report not found",
+         )
+ 
+-    return report
++    return _report_response_payload(db, report)
+ 
+ 
+ @router.put(
+@@ -210,7 +251,7 @@
+             report=report,
+         )
+ 
+-    return report
++    return _report_response_payload(db, report)
+ 
+ @router.post(
+     "/{assessment_id}/reports/{report_id}/release-to-patient",

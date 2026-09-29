@@ -1,0 +1,16 @@
+--- /mnt/data/inspect17_current/b17_restore_package/frontend/src/api/clinical.ts	2026-09-29 02:29:18.000000000 +0000
++++ /mnt/data/b18_build/frontend/src/api/clinical.ts	2026-09-29 02:46:14.363310740 +0000
+@@ -48,6 +48,13 @@
+   generated_at: string;
+   created_by: number | null;
+   updated_at: string;
++  clinician_id?: number | null;
++  clinician_guidance?: string | null;
++  clinician_review_status?: string | null;
++  clinician_reviewed_at?: string | null;
++  released_to_patient?: boolean;
++  patient_reviewed_at?: string | null;
++  last_viewed_at?: string | null;
+ }
+ 
+ export interface ClinicianReview {

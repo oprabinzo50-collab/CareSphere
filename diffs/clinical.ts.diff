@@ -1,0 +1,38 @@
+--- /mnt/data/ai_current/frontend/src/api/clinical.ts	2026-09-28 07:19:22.000000000 +0000
++++ /mnt/data/b20_build/frontend/src/api/clinical.ts	2026-09-29 11:25:05.650165388 +0000
+@@ -96,6 +96,21 @@
+   };
+ }
+ 
++export interface AIProviderStatusResponse {
++  enabled: boolean;
++  provider: string;
++  model_configured: boolean;
++  api_key_configured: boolean;
++  base_url_configured: boolean;
++}
++
++export interface AIProviderHealthResponse {
++  available: boolean;
++  provider: string;
++  model: string | null;
++  message: string;
++}
++
+ export interface AIClinicalSummaryResponse {
+   success: boolean;
+   patient_id: number;
+@@ -296,3 +311,13 @@
+   );
+   return response.data;
+ }
++
++export async function getAIProviderStatus(): Promise<AIProviderStatusResponse> {
++  const response = await api.get<AIProviderStatusResponse>("/ai/status");
++  return response.data;
++}
++
++export async function getAIProviderHealth(): Promise<AIProviderHealthResponse> {
++  const response = await api.get<AIProviderHealthResponse>("/ai/health");
++  return response.data;
++}

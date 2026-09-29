@@ -1,0 +1,57 @@
+--- /mnt/data/b15base/ex/frontend/src/ClinicalWorkspace.tsx	2026-09-29 00:55:37.000000000 +0000
++++ /mnt/data/batch15_package/frontend/src/ClinicalWorkspace.tsx	2026-09-29 01:09:12.965967801 +0000
+@@ -766,7 +766,11 @@
+         action === "approve" ? "Report reviewed and approved by clinician." : "Report reviewed and rejected by clinician.",
+       );
+       await refreshAssessmentBundle();
+-      setMessage(`Report ${action === "approve" ? "approved" : "rejected"}.`);
++      if (action === "approve") {
++        setMessage("Report approved and sent to the patient portal successfully.");
++      } else {
++        setMessage("Report rejected and returned to the clinical workflow.");
++      }
+     });
+   };
+ 
+@@ -983,7 +987,7 @@
+                 <div>
+                   <div style={{ color: "#0f766e", fontSize: 11, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.08em" }}>Clinical documentation</div>
+                   <h3 style={{ margin: "3px 0 0", color: "#102a43", fontSize: 20 }}>Medical Report</h3>
+-                  <p style={{ margin: "5px 0 0", color: "#627d98", fontSize: 12 }}>Generate a structured report from the completed assessment, then submit it for clinician review before patient release.</p>
++                  <p style={{ margin: "5px 0 0", color: "#627d98", fontSize: 12 }}>Generate a structured report, submit it for clinician review, then use “Approve & Send to Patient” to publish the approved report to the patient's My Health portal.</p>
+                 </div>
+                 <span style={{ ...statusStyle("pending"), background: reports.length ? "#f0fdfa" : "#f8fafc", color: reports.length ? "#0f766e" : "#64748b" }}>{reports.length} {reports.length === 1 ? "report" : "reports"}</span>
+               </div>
+@@ -1023,9 +1027,31 @@
+                           {!review && report.status === "draft" && <button type="button" disabled={Boolean(busyAction)} onClick={() => void submitReport(report)} style={secondaryButton}>Submit for review</button>}
+                           {review && <span style={statusStyle(review.review_status)}>Review: {humanize(review.review_status)}</span>}
+                           {review && review.review_status === "pending" && <>
+-                            <button type="button" disabled={Boolean(busyAction)} onClick={() => void reviewReport(report, "approve")} style={primaryButton}>Approve</button>
++                            <button
++                              type="button"
++                              disabled={Boolean(busyAction)}
++                              onClick={() => void reviewReport(report, "approve")}
++                              style={primaryButton}
++                              title="Approve this report and release it to the selected patient's portal."
++                            >
++                              Approve &amp; Send to Patient
++                            </button>
+                             <button type="button" disabled={Boolean(busyAction)} onClick={() => void reviewReport(report, "reject")} style={secondaryButton}>Reject</button>
+                           </>}
++                          {review?.review_status === "approved" && (
++                            <div style={{
++                              width: "100%",
++                              padding: "10px 12px",
++                              borderRadius: 11,
++                              background: "#ecfdf5",
++                              border: "1px solid #a7f3d0",
++                              color: "#047857",
++                              fontSize: 12,
++                              fontWeight: 800,
++                            }}>
++                              Patient access enabled — this approved report is available in the patient's My Health portal.
++                            </div>
++                          )}
+                         </div>
+                       </div>
+                     );

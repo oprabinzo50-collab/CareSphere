@@ -1,0 +1,30 @@
+--- a/api/clinical.ts
++++ b/api/clinical.ts
+@@ -275,8 +275,27 @@
+   const response = await api.get<ReportPatientAccess>(`/assessments/reports/${reportId}/patient-access`);
+   return response.data;
+ }
+ 
++export async function releaseReportToPatient(
++  assessmentId: number,
++  reportId: number,
++  clinicalComment?: string,
++) {
++  const response = await api.post<{
++    review: ClinicianReview;
++    report: Report;
++    patient_access: ReportPatientAccess;
++  }>(
++    `/assessments/${assessmentId}/reports/${reportId}/release-to-patient`,
++    undefined,
++    clinicalComment
++      ? { params: { clinical_comment: clinicalComment } }
++      : undefined,
++  );
++  return response.data;
++}
++
+ export async function generatePatientClinicalSummary(
+   patientId: number,
+   data = {
+     include_assessments: true,

@@ -1,0 +1,67 @@
+--- baseline/frontend/src/api/clinical.ts
+
++++ batch19/frontend/src/api/clinical.ts
+
+@@ -1,4 +1,5 @@
+
+ import api from "./client";
++import type { Patient } from "./patients";
+ 
+ export interface AssessmentSession {
+   id: number;
+@@ -111,6 +112,21 @@
+
+   last_viewed_at: string | null;
+ }
+ 
++export interface AdminReviewedReport {
++  report: Report;
++  patient: Patient;
++  clinician: {
++    id: number;
++    full_name: string;
++    username: string;
++  };
++  review_status: string;
++  reviewed_at: string;
++  released_to_patient: boolean;
++  patient_reviewed_at: string | null;
++  last_viewed_at: string | null;
++}
++
+ export interface AIClinicalSummaryResponse {
+   success: boolean;
+   patient_id: number;
+@@ -247,7 +263,7 @@
+
+ export async function updateReportReview(
+   assessmentId: number,
+   reportId: number,
+-  reviewStatus: "pending" | "approved" | "rejected" | "completed",
++  reviewStatus: "pending" | "reviewed" | "approved" | "rejected" | "completed",
+   clinicalComment?: string,
+   modificationNotes?: string,
+ ) {
+@@ -302,6 +318,21 @@
+
+   return response.data;
+ }
+ 
++
++export async function listAdminReviewedReports(limit = 50) {
++  const response = await api.get<AdminReviewedReport[]>("/assessments/reports/reviewed", {
++    params: { limit },
++  });
++  return response.data;
++}
++
++export async function deleteReport(reportId: number) {
++  const response = await api.delete<{ deleted: boolean; report_id: number }>(
++    `/assessments/reports/${reportId}`,
++  );
++  return response.data;
++}
++
+ export async function generatePatientClinicalSummary(
+   patientId: number,
+   data = {

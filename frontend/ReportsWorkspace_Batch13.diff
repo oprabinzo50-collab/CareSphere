@@ -1,0 +1,241 @@
+--- /mnt/data/report_ref/package/frontend/src/ReportsWorkspace.tsx	2026-09-28 23:23:59.000000000 +0000
++++ /mnt/data/batch13_work/frontend/src/ReportsWorkspace.tsx	2026-09-29 00:34:55.931979088 +0000
+@@ -1,6 +1,7 @@
+ import React, { useMemo, useState } from "react";
+ import { useNavigate } from "react-router-dom";
+ import { useAuth } from "./auth/AuthContext";
++import PatientAvatar from "./components/ui/PatientAvatar";
+ import { searchPatients, type Patient } from "./api/patients";
+ import {
+   completeAssessment,
+@@ -90,6 +91,110 @@
+   }
+ }
+ 
++type ReportPayload = {
++  assessment_type?: string;
++  summary?: string;
++  risk_assessment?: { score?: number | null; risk_level?: string | null };
++  risk_factors?: Array<{ factor?: string; severity?: string }>;
++  health_concerns?: string[];
++  recommendations?: Array<{ title?: string; recommendation_text?: string; priority?: string; status?: string }>;
++};
++
++function parseReportPayload(value: unknown): ReportPayload {
++  if (value && typeof value === "object") return value as ReportPayload;
++  if (typeof value === "string") {
++    try {
++      const parsed = JSON.parse(value);
++      return parsed && typeof parsed === "object" ? parsed as ReportPayload : {};
++    } catch {
++      return {};
++    }
++  }
++  return {};
++}
++
++function reportAiContent(value: unknown) {
++  const payload = parseReportPayload(value) as ReportPayload & { ai_generated_content?: Record<string, unknown> };
++  const ai = payload.ai_generated_content;
++  if (!ai) return null;
++  return {
++    clinical_summary: typeof ai.clinical_summary === "string" ? ai.clinical_summary : "",
++    recommendations_summary: typeof ai.recommendations_summary === "string" ? ai.recommendations_summary : "",
++  };
++}
++
++function reportDate(value: string | null | undefined) {
++  if (!value) return "Not recorded";
++  const date = new Date(value);
++  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
++}
++
++function ReportsPreview({
++  report,
++  patient,
++  preparedBy,
++  clinicianGuidance,
++  reviewStatus,
++  patientReviewedAt,
++  releasedToPatient,
++}: {
++  report: Report;
++  patient: Patient;
++  preparedBy: string;
++  clinicianGuidance?: string;
++  reviewStatus?: string;
++  patientReviewedAt?: string | null;
++  releasedToPatient?: boolean;
++}) {
++  const payload = parseReportPayload(report.report_content);
++  const ai = reportAiContent(report.report_content);
++  const factors = Array.isArray(payload.risk_factors) ? payload.risk_factors : [];
++  const concerns = Array.isArray(payload.health_concerns) ? payload.health_concerns : [];
++  const recommendations = Array.isArray(payload.recommendations) ? payload.recommendations : [];
++  const demographics = [
++    ["Patient number", patient.patient_number],
++    ["Date of birth", patient.date_of_birth || "Not recorded"],
++    ["Sex", patient.sex ? humanize(patient.sex) : "Not recorded"],
++    ["Location", [patient.district, patient.country].filter(Boolean).join(", ") || "Not recorded"],
++    ["Status", humanize(patient.status)],
++  ];
++  return (
++    <article className="care-report-document">
++      <header className="care-report-cover">
++        <div className="care-report-cover-main">
++          <PatientAvatar patientId={patient.id} firstName={patient.first_name} lastName={patient.last_name} size={72} radius={22} />
++          <div>
++            <div className="care-report-kicker">CareSphere clinical report</div>
++            <h3>{report.report_title}</h3>
++            <p>{humanize(payload.assessment_type || report.report_type)} · Version {report.version}</p>
++          </div>
++        </div>
++        <div className="care-report-status-block">
++          <span style={statusStyle(report.status)}>{humanize(report.status)}</span>
++          <small>Generated {reportDate(report.generated_at)}</small>
++        </div>
++      </header>
++      <section className="care-report-section"><div className="care-report-section-heading"><span>01</span><div><h4>Patient information</h4><p>Identity and related record context.</p></div></div><div className="care-report-patient-strip"><div><strong>{patient.first_name} {patient.last_name}</strong><span>Patient</span></div><div className="care-report-demographics">{demographics.map(([label,value]) => <div key={label}><small>{label}</small><strong>{value}</strong></div>)}</div></div></section>
++      <section className="care-report-section"><div className="care-report-section-heading"><span>02</span><div><h4>Executive summary</h4><p>Concise report overview.</p></div></div><div className="care-report-callout care-report-callout-primary"><p>{report.executive_summary || payload.summary || "No executive summary was recorded."}</p></div></section>
++      <section className="care-report-section"><div className="care-report-section-heading"><span>03</span><div><h4>Clinical findings</h4><p>Structured findings preserved from the generated report.</p></div></div>{ai?.clinical_summary ? <div className="care-report-callout care-report-ai"><div className="care-report-label">AI-supported narrative</div><p>{ai.clinical_summary}</p></div> : null}<div className="care-report-grid-two"><div className="care-report-mini-card"><small>Risk score</small><strong>{payload.risk_assessment?.score ?? "Not recorded"}</strong></div><div className="care-report-mini-card"><small>Risk level</small><strong>{humanize(payload.risk_assessment?.risk_level)}</strong></div></div></section>
++      <section className="care-report-section"><div className="care-report-section-heading"><span>04</span><div><h4>Key risk factors & health concerns</h4><p>Documented items from the report.</p></div></div><div className="care-report-item-columns"><div><div className="care-report-label">Risk factors</div>{factors.length ? factors.map((factor,index)=><div className="care-report-list-item" key={`${factor.factor || "factor"}-${index}`}><span>{humanize(factor.factor)}</span><span style={statusStyle(factor.severity)}>{humanize(factor.severity)}</span></div>) : <div className="care-report-empty">No documented risk factors.</div>}</div><div><div className="care-report-label">Health concerns</div>{concerns.length ? concerns.map((concern,index)=><div className="care-report-list-item" key={`${concern}-${index}`}><span>{concern}</span></div>) : <div className="care-report-empty">No documented health concerns.</div>}</div></div></section>
++      <section className="care-report-section"><div className="care-report-section-heading"><span>05</span><div><h4>Recommendations</h4><p>Existing recommendations as recorded.</p></div></div>{ai?.recommendations_summary || report.recommendations_summary ? <div className="care-report-callout care-report-ai"><div className="care-report-label">System / AI recommendation summary</div><p>{ai?.recommendations_summary || report.recommendations_summary}</p></div> : null}<div className="care-report-recommendations">{recommendations.length ? recommendations.map((recommendation,index)=><div className="care-report-recommendation" key={`${recommendation.title || "recommendation"}-${index}`}><div><strong>{recommendation.title || `Recommendation ${index+1}`}</strong><p>{recommendation.recommendation_text || "No recommendation text recorded."}</p></div><div className="care-report-recommendation-meta">{recommendation.priority ? <span style={statusStyle(recommendation.priority)}>{humanize(recommendation.priority)}</span>:null}{recommendation.status?<span style={statusStyle(recommendation.status)}>{humanize(recommendation.status)}</span>:null}</div></div>) : <div className="care-report-empty">No structured recommendations were recorded.</div>}</div></section>
++      {clinicianGuidance ? <section className="care-report-section care-report-clinician-guidance"><div className="care-report-section-heading"><span>06</span><div><h4>Clinician guidance</h4><p>Additional guidance prepared for the patient.</p></div></div><div className="care-report-callout care-report-clinician-callout"><div className="care-report-label">Clinician-authored</div><p>{clinicianGuidance}</p></div></section> : null}
++      <section className="care-report-section"><div className="care-report-section-heading"><span>{clinicianGuidance ? "07" : "06"}</span><div><h4>Report provenance</h4><p>Prepared, review, and release information.</p></div></div><div className="care-report-footer-grid"><div><small>Prepared by</small><strong>{preparedBy}</strong></div><div><small>Review status</small><strong>{humanize(reviewStatus || report.status)}</strong></div><div><small>Generated</small><strong>{reportDate(report.generated_at)}</strong></div><div><small>Patient access</small><strong>{releasedToPatient ? (patientReviewedAt ? `Reviewed ${reportDate(patientReviewedAt)}` : "Released · awaiting review") : "Not released"}</strong></div></div><p className="care-report-limitations">{report.limitations || "This report supports clinical review and does not independently establish a diagnosis or treatment decision."}</p></section>
++      <details className="care-report-source"><summary>View source report payload</summary><pre>{stringifyReportContent(report.report_content)}</pre></details>
++    </article>
++  );
++}
++
++function ReportsWorkspaceStyles() {
++  return <style>{`
++    .care-report-document{border:1px solid #dbe6eb;border-radius:20px;background:#fff;box-shadow:0 18px 48px rgba(15,23,42,.07);overflow:hidden}
++    .care-report-cover{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;padding:24px;background:linear-gradient(135deg,#f0fdfa 0%,#fff 55%,#eff6ff 100%);border-bottom:1px solid #e2e8f0}
++    .care-report-cover-main{display:flex;gap:15px;align-items:center;min-width:0}.care-report-kicker,.care-report-label{color:#0f766e;font-size:10px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.care-report-cover h3{margin:3px 0 5px;color:#102a43;font-size:22px;letter-spacing:-.025em}.care-report-cover p,.care-report-status-block small{margin:0;color:#627d98;font-size:12px}.care-report-status-block{display:grid;justify-items:end;gap:7px;text-align:right}
++    .care-report-section{padding:22px 24px;border-bottom:1px solid #edf2f5}.care-report-section:last-of-type{border-bottom:0}.care-report-section-heading{display:flex;gap:11px;align-items:flex-start;margin-bottom:15px}.care-report-section-heading>span{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#ecfeff;color:#0f766e;font-size:10px;font-weight:900}.care-report-section-heading h4{margin:0;color:#102a43;font-size:15px}.care-report-section-heading p{margin:3px 0 0;color:#78909c;font-size:11px}.care-report-patient-strip{display:grid;grid-template-columns:minmax(180px,.7fr) minmax(0,1.8fr);gap:18px}.care-report-patient-strip>div:first-child{padding:15px;border-radius:14px;background:#f8fafc}.care-report-patient-strip strong{display:block;color:#102a43;font-size:17px}.care-report-patient-strip span{display:block;margin-top:3px;color:#627d98;font-size:11px}.care-report-demographics{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}.care-report-demographics>div,.care-report-footer-grid>div{padding:11px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}.care-report-demographics small,.care-report-footer-grid small,.care-report-mini-card small{display:block;color:#64748b;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.05em}.care-report-demographics strong,.care-report-footer-grid strong{display:block;margin-top:4px;color:#102a43;font-size:12px;word-break:break-word}.care-report-callout{padding:15px;border-radius:14px}.care-report-callout p{margin:7px 0 0;color:#334e68;font-size:13px;line-height:1.7;white-space:pre-wrap}.care-report-callout-primary{background:#f8fbff;border:1px solid #dbeafe}.care-report-ai{background:linear-gradient(135deg,#ecfeff,#eff6ff);border:1px solid #bae6fd}.care-report-grid-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:12px}.care-report-mini-card{padding:13px;border:1px solid #e2e8f0;border-radius:13px;background:#fbfdff}.care-report-mini-card strong{display:block;margin-top:5px;color:#102a43;font-size:22px}.care-report-item-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.care-report-list-item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 11px;margin-top:7px;border-radius:11px;border:1px solid #e2e8f0;background:#fff;color:#334e68;font-size:12px}.care-report-empty{padding:11px 12px;margin-top:7px;border-radius:11px;background:#f8fafc;color:#94a3b8;font-size:12px}.care-report-recommendation{display:flex;justify-content:space-between;gap:15px;align-items:flex-start;padding:14px;margin-top:9px;border-radius:13px;border:1px solid #e2e8f0;background:#fff}.care-report-recommendation strong{color:#102a43;font-size:13px}.care-report-recommendation p{margin:6px 0 0;color:#475569;font-size:12px;line-height:1.6;white-space:pre-wrap}.care-report-recommendation-meta{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.care-report-clinician-guidance{background:linear-gradient(180deg,#fcfffe,#f8fbff)}.care-report-clinician-callout{background:#f0fdfa;border:1px solid #99f6e4}.care-report-footer-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.care-report-limitations{margin:13px 0 0;color:#64748b;font-size:11px;line-height:1.6}.care-report-source{padding:0 24px 22px}.care-report-source summary{cursor:pointer;color:#0f766e;font-weight:800;font-size:11px;padding-top:3px}.care-report-source pre{margin:9px 0 0;padding:13px;border-radius:12px;background:#0f172a;color:#e2e8f0;overflow:auto;font-size:10px;line-height:1.55}@media(max-width:760px){.care-report-cover{flex-direction:column}.care-report-status-block{justify-items:start;text-align:left}.care-report-patient-strip,.care-report-item-columns,.care-report-footer-grid{grid-template-columns:1fr}.care-report-recommendation{flex-direction:column}.care-report-recommendation-meta{justify-content:flex-start}}
++  `}</style>;
++}
++
+ export default function ReportsWorkspace() {
+   const navigate = useNavigate();
+   const { user } = useAuth();
+@@ -113,6 +218,10 @@
+     void listUsers({ limit: 100 }).then(setUsers).catch(() => setUsers([]));
+   }, [user?.role]);
+ 
++  React.useEffect(() => {
++    void searchPatients({ search: "", limit: 100 }).then(setPatients).catch(() => setPatients([]));
++  }, []);
++
+   const reviewByReport = useMemo(
+     () => new Map(
+       reviews
+@@ -267,7 +376,9 @@
+   };
+ 
+   return (
+-    <div style={{ display: "grid", gap: 18, animation: "careFadeUp 420ms ease both" }}>
++    <>
++      <ReportsWorkspaceStyles />
++      <div style={{ display: "grid", gap: 18, animation: "careFadeUp 420ms ease both" }}>
+       <section style={{ ...panel, background: "linear-gradient(135deg, #ffffff 0%, #f3fbfb 100%)" }}>
+         <div style={{ display: "flex", justifyContent: "space-between", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
+           <div>
+@@ -293,9 +404,16 @@
+             <p style={{ margin: "5px 0 0", color: "#627d98", fontSize: 12 }}>Search by patient number, name, district, or other supported patient fields.</p>
+           </div>
+         </div>
+-        <form onSubmit={findPatients} style={{ display: "flex", gap: 9, marginTop: 14, flexWrap: "wrap" }}>
+-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. CS-000005 or Lawrence" style={{ ...input, flex: "1 1 280px" }} />
+-          <button type="submit" disabled={Boolean(busy)} style={primaryButton}>{busy === "search patients" ? "Searching..." : "Search Patients"}</button>
++        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 10, marginTop: 14 }}>
++          <label htmlFor="reports-patient-select" style={{ color: "#334e68", fontSize: 11, fontWeight: 850, textTransform: "uppercase", letterSpacing: "0.07em" }}>Select existing patient</label>
++          <select id="reports-patient-select" value={selectedPatient?.id ?? ""} onChange={(event) => { const patient = patients.find((item) => item.id === Number(event.target.value)); if (patient) void selectPatient(patient); }} style={{ ...input, appearance: "auto", cursor: "pointer" }}>
++            <option value="">Choose a patient...</option>
++            {patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.first_name} {patient.last_name} · {patient.patient_number}</option>)}
++          </select>
++        </div>
++        <form onSubmit={findPatients} style={{ display: "flex", gap: 9, marginTop: 12, flexWrap: "wrap" }}>
++          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter the patient list by name or patient number..." style={{ ...input, flex: "1 1 280px" }} />
++          <button type="submit" disabled={Boolean(busy)} style={secondaryButton}>{busy === "search patients" ? "Searching..." : "Search / refresh"}</button>
+         </form>
+ 
+         {patients.length > 0 && (
+@@ -393,47 +511,29 @@
+               <div style={{ display: "grid", gap: 12, marginTop: 16 }}>
+                 {reports.map((report) => {
+                   const review = reviewByReport.get(report.id);
+-                  const reportText = stringifyReportContent(report.report_content);
+                   return (
+-                    <article key={report.id} style={{ border: "1px solid #e2e8f0", borderRadius: 15, padding: 16, background: "linear-gradient(180deg, #ffffff 0%, #fbfdff 100%)" }}>
+-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+-                        <div>
+-                          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+-                            <strong style={{ color: "#102a43", fontSize: 15 }}>{report.report_title}</strong>
+-                            <span style={statusStyle(report.status)}>{humanize(report.status)}</span>
+-                          </div>
+-                          <p style={{ margin: "7px 0 0", color: "#475569", fontSize: 13, lineHeight: 1.55 }}>{report.executive_summary || "No executive summary available."}</p>
+-                        </div>
+-                        <span style={{ color: "#64748b", fontSize: 11 }}>v{report.version}</span>
+-                      </div>
+-
+-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10, marginTop: 13 }}>
+-                        <div style={{ padding: 11, borderRadius: 11, background: "#f0fdfa" }}><div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Report type</div><div style={{ marginTop: 4, color: "#102a43", fontSize: 12 }}>{humanize(report.report_type)}</div></div>
+-                        <div style={{ padding: 11, borderRadius: 11, background: "#eff6ff" }}><div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Generated by</div><div style={{ marginTop: 4, color: "#102a43", fontSize: 12 }}>{report.generated_by || "CareSphere"}</div></div>
+-                        <div style={{ padding: 11, borderRadius: 11, background: "#f8fafc" }}><div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>AI generated</div><div style={{ marginTop: 4, color: "#102a43", fontSize: 12 }}>{report.ai_generated ? "Yes" : "No"}</div></div>
+-                        {user?.role === "administrator" && <div style={{ padding: 11, borderRadius: 11, background: "#fff7ed" }}><div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Prepared by</div><div style={{ marginTop: 4, color: "#102a43", fontSize: 12 }}>{preparedByLabel(report)}</div></div>}
+-                        {user?.role === "administrator" && <div style={{ padding: 11, borderRadius: 11, background: "#eefcf7" }}><div style={{ color: "#64748b", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>Patient review</div><div style={{ marginTop: 4, color: "#102a43", fontSize: 12 }}>{patientAccessByReport[report.id]?.patient_reviewed_at ? `Reviewed ${new Date(patientAccessByReport[report.id].patient_reviewed_at as string).toLocaleString()}` : "Not yet reviewed"}</div></div>}
+-                      </div>
+-
+-                      {report.recommendations_summary && <div style={{ marginTop: 12, padding: 12, borderRadius: 11, background: "#f8fafc", color: "#334e68", fontSize: 12, whiteSpace: "pre-wrap", lineHeight: 1.55 }}><strong style={{ color: "#102a43" }}>Recommendations summary</strong><div style={{ marginTop: 5 }}>{report.recommendations_summary}</div></div>}
++                    <div style={{ display: "grid", gap: 12 }}>
++                      <ReportsPreview
++                        report={report}
++                        patient={selectedPatient}
++                        preparedBy={preparedByLabel(report)}
++                        clinicianGuidance={guidanceByReport[report.id] || ""}
++                        reviewStatus={review?.review_status}
++                        patientReviewedAt={patientAccessByReport[report.id]?.patient_reviewed_at}
++                        releasedToPatient={patientAccessByReport[report.id]?.released_to_patient}
++                      />
+ 
+                       {user?.role === "clinician" && (
+-                        <div style={{ marginTop: 13, padding: 13, borderRadius: 13, background: "linear-gradient(135deg, #f0fdfa, #eff6ff)", border: "1px solid #cceee9" }}>
++                        <div style={{ display: "grid", gap: 10, padding: 13, borderRadius: 13, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+-                            <div><strong style={{ color: "#102a43", fontSize: 13 }}>Clinician guidance for the patient</strong><div style={{ marginTop: 3, color: "#627d98", fontSize: 11 }}>Add your personal recommendation alongside the existing AI analysis.</div></div>
++                            <div><strong style={{ color: "#102a43", fontSize: 13 }}>Clinician guidance</strong><div style={{ marginTop: 3, color: "#627d98", fontSize: 11 }}>Add or update the patient-facing recommendation without altering the generated report.</div></div>
+                             <span style={{ color: "#0f766e", fontSize: 10, fontWeight: 850 }}>Clinician-authored</span>
+                           </div>
+-                          <textarea value={guidanceByReport[report.id] || ""} onChange={(event) => setGuidanceByReport((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="e.g. Please arrange a routine check-up, follow the care plan discussed, or contact a health professional if symptoms persist." style={{ ...input, minHeight: 92, marginTop: 10, resize: "vertical" }} />
++                          <textarea value={guidanceByReport[report.id] || ""} onChange={(event) => setGuidanceByReport((current) => ({ ...current, [report.id]: event.target.value }))} placeholder="Add a clear next-step recommendation for the patient." style={{ ...input, minHeight: 92, resize: "vertical" }} />
+                         </div>
+                       )}
+-                      {patientAccessByReport[report.id]?.released_to_patient && <div style={{ marginTop: 12, padding: 11, borderRadius: 11, background: "#ecfdf5", border: "1px solid #bbf7d0", color: "#047857", fontSize: 12, fontWeight: 750 }}>Patient access enabled{patientAccessByReport[report.id]?.patient_reviewed_at ? ` · reviewed ${new Date(patientAccessByReport[report.id].patient_reviewed_at as string).toLocaleString()}` : " · awaiting patient review"}</div>}
+-
+-                      <details style={{ marginTop: 12 }}>
+-                        <summary style={{ cursor: "pointer", color: "#0f766e", fontWeight: 800, fontSize: 12 }}>View full report content</summary>
+-                        <pre style={{ margin: "9px 0 0", padding: 13, borderRadius: 11, background: "#0f172a", color: "#e2e8f0", overflowX: "auto", fontSize: 11, lineHeight: 1.55 }}>{reportText}</pre>
+-                      </details>
+ 
+-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 13, alignItems: "center" }}>
++                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: 13, borderRadius: 13, background: "#f8fafc", border: "1px solid #e2e8f0", alignItems: "center" }}>
+                         {review && <span style={statusStyle(review.review_status)}>Review: {humanize(review.review_status)}</span>}
+                         {!review && report.status === "draft" && <button type="button" disabled={Boolean(busy)} onClick={() => void submitReport(report)} style={secondaryButton}>{busy === "submit report for review" ? "Submitting..." : "Submit for Review"}</button>}
+                         {user?.role === "clinician" && review && <button type="button" disabled={Boolean(busy)} onClick={() => void saveClinicianGuidance(report)} style={secondaryButton}>Save guidance</button>}
+@@ -444,7 +544,7 @@
+                           <button type="button" disabled={Boolean(busy)} onClick={() => void reviewReport(report, "reject")} style={secondaryButton}>Reject Report</button>
+                         </>}
+                       </div>
+-                    </article>
++                    </div>
+                   );
+                 })}
+               </div>
+@@ -464,5 +564,6 @@
+         </div>
+       </section>
+     </div>
++    </>
+   );
+ }

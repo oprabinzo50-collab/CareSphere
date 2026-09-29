@@ -1,0 +1,26 @@
+CARESPHERE BATCH 4 — App.tsx PATCH
+
+1) Add this import near the existing PatientPortal import:
+import ClinicalWorkspace from "./ClinicalWorkspace";
+
+2) In navigationByRole.administrator, add:
+{ label: "Clinical Review", path: "/clinical-review" },
+
+Place it immediately after:
+{ label: "Patients", path: "/patients" },
+
+3) In navigationByRole.clinician, add the same item immediately after Patients:
+{ label: "Clinical Review", path: "/clinical-review" },
+
+4) Inside ProtectedLayout's <Routes>, add this route immediately after /patients:
+
+<Route
+  path="/clinical-review"
+  element={
+    user.role === "administrator" || user.role === "clinician"
+      ? <ClinicalWorkspace />
+      : <Navigate to={homePath} replace />
+  }
+/>
+
+Do not change the patient navigation or patient-portal route.

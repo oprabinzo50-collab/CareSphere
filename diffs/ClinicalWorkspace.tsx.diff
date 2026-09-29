@@ -1,0 +1,66 @@
+--- /mnt/data/ClinicalWorkspace(1).tsx	2026-09-29 11:22:13.150182277 +0000
++++ /mnt/data/b20_build/frontend/src/ClinicalWorkspace.tsx	2026-09-29 11:25:05.651225391 +0000
+@@ -7,6 +7,8 @@
+   generatePatientClinicalSummary,
+   generateRiskRecommendations,
+   getRiskAssessment,
++  getAIProviderHealth,
++  getAIProviderStatus,
+   listAssessments,
+   listClinicianReviews,
+   listRecommendations,
+@@ -215,6 +217,7 @@
+   const [risk, setRisk] = useState<RiskAssessmentResult | null>(null);
+   const [aiSummary, setAiSummary] = useState<string>("");
+   const [decisionSupport, setDecisionSupport] = useState<string>("");
++  const [aiAvailability, setAiAvailability] = useState<{ available: boolean; provider: string; model: string | null; message: string } | null>(null);
+   const [loading, setLoading] = useState(false);
+   const [busyAction, setBusyAction] = useState("");
+   const [error, setError] = useState("");
+@@ -385,6 +388,27 @@
+ 
+   useEffect(() => {
+     void search();
++    void (async () => {
++      try {
++        const [status, health] = await Promise.all([
++          getAIProviderStatus(),
++          getAIProviderHealth(),
++        ]);
++        setAiAvailability({
++          available: Boolean(status.enabled && health.available),
++          provider: health.provider || status.provider,
++          model: health.model || null,
++          message: health.message,
++        });
++      } catch {
++        setAiAvailability({
++          available: false,
++          provider: "unknown",
++          model: null,
++          message: "AI provider status could not be checked.",
++        });
++      }
++    })();
+   }, []);
+ 
+   const createNewAssessment = async () => {
+@@ -780,10 +804,14 @@
+             </section>
+ 
+             <section style={panel}>
+-              <div><h3 style={{ margin: 0, color: "#102a43" }}>Clinician-facing AI support</h3><p style={{ margin: "5px 0 0", color: "#627d98", fontSize: 12 }}>AI output is decision support for the clinical team; it is not the final clinical decision.</p></div>
+-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 13 }}><button type="button" disabled={Boolean(busyAction)} onClick={() => void run("generate AI clinical summary", async () => { const result = await generatePatientClinicalSummary(selectedPatient.id); setAiSummary(result.summary); })} style={secondaryButton}>{busyAction === "generate AI clinical summary" ? "Generating..." : "Generate AI clinical summary"}</button><button type="button" disabled={Boolean(busyAction)} onClick={() => void run("run AI clinical decision support", async () => { const result = await runClinicalDecisionSupport(selectedPatient.id); setDecisionSupport(result.decision_support); })} style={secondaryButton}>{busyAction === "run AI clinical decision support" ? "Analyzing..." : "Run AI decision support"}</button></div>
+-              {aiSummary && <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#f0fdfa", border: "1px solid #ccfbf1" }}><strong style={{ color: "#102a43" }}>AI clinical summary</strong><p style={{ margin: "7px 0 0", whiteSpace: "pre-wrap", color: "#334e68", lineHeight: 1.6, fontSize: 13 }}>{aiSummary}</p></div>}
+-              {decisionSupport && <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: "#eff6ff", border: "1px solid #dbeafe" }}><strong style={{ color: "#102a43" }}>AI clinical decision support</strong><p style={{ margin: "7px 0 0", whiteSpace: "pre-wrap", color: "#334e68", lineHeight: 1.6, fontSize: 13 }}>{decisionSupport}</p></div>}
++              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
++                <div><h3 style={{ margin: 0, color: "#102a43" }}>Clinician-facing AI support</h3><p style={{ margin: "5px 0 0", color: "#627d98", fontSize: 12 }}>AI output is decision support for the clinical team; it is not the final clinical decision.</p></div>
++                <span style={statusStyle(aiAvailability?.available ? "active" : "pending")}>{aiAvailability?.available ? `AI ready${aiAvailability.model ? ` · ${aiAvailability.model}` : ""}` : "AI unavailable"}</span>
++              </div>
++              {aiAvailability && <div style={{ marginTop: 10, color: "#64748b", fontSize: 11 }}>Provider: {humanize(aiAvailability.provider)} · {aiAvailability.message}</div>}
++              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 13 }}><button type="button" disabled={Boolean(busyAction) || aiAvailability?.available === false} onClick={() => void run("generate AI clinical summary", async () => { const result = await generatePatientClinicalSummary(selectedPatient.id); if (!result.summary?.trim()) throw new Error("AI provider returned an empty clinical summary."); setAiSummary(result.summary.trim()); })} style={{ ...secondaryButton, opacity: aiAvailability?.available === false ? 0.58 : 1 }}>{busyAction === "generate AI clinical summary" ? "Generating..." : "Generate AI clinical summary"}</button><button type="button" disabled={Boolean(busyAction) || aiAvailability?.available === false} onClick={() => void run("run AI clinical decision support", async () => { const result = await runClinicalDecisionSupport(selectedPatient.id); if (!result.decision_support?.trim()) throw new Error("AI provider returned empty decision support."); setDecisionSupport(result.decision_support.trim()); })} style={{ ...secondaryButton, opacity: aiAvailability?.available === false ? 0.58 : 1 }}>{busyAction === "run AI clinical decision support" ? "Analyzing..." : "Run AI decision support"}</button></div>
++              {aiSummary && <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#f0fdfa", border: "1px solid #ccfbf1" }}><div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}><strong style={{ color: "#102a43" }}>AI clinical summary</strong>{aiAvailability?.model && <span style={{ color: "#64748b", fontSize: 10 }}>{humanize(aiAvailability.provider)} · {aiAvailability.model}</span>}</div><p style={{ margin: "7px 0 0", whiteSpace: "pre-wrap", color: "#334e68", lineHeight: 1.6, fontSize: 13 }}>{aiSummary}</p></div>}
++              {decisionSupport && <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: "#eff6ff", border: "1px solid #dbeafe" }}><div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}><strong style={{ color: "#102a43" }}>AI clinical decision support</strong>{aiAvailability?.model && <span style={{ color: "#64748b", fontSize: 10 }}>{humanize(aiAvailability.provider)} · {aiAvailability.model}</span>}</div><p style={{ margin: "7px 0 0", whiteSpace: "pre-wrap", color: "#334e68", lineHeight: 1.6, fontSize: 13 }}>{decisionSupport}</p></div>}
+             </section>
+           </>}
+         </>

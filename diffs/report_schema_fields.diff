@@ -1,0 +1,109 @@
+--- /mnt/data/refbackend/CareSphere_backend_RBAC_v2_UserManagement/app/schemas/report.py	2026-09-27 17:37:27.000000000 +0000
++++ /mnt/data/b18_build/backend/app/schemas/report.py	2026-09-29 02:48:11.036013548 +0000
+@@ -1,49 +1,56 @@
+-from datetime import datetime
+-
+-from pydantic import BaseModel, ConfigDict
+-
+-
+-class ReportCreate(BaseModel):
+-    report_type: str
+-    report_title: str
+-    report_content: str
+-    executive_summary: str | None = None
+-    recommendations_summary: str | None = None
+-    limitations: str | None = None
+-    generated_by: str | None = None
+-    ai_generated: bool = False
+-    version: int = 1
+-    status: str = "draft"
+-
+-
+-class ReportUpdate(BaseModel):
+-    report_type: str | None = None
+-    report_title: str | None = None
+-    report_content: str | None = None
+-    executive_summary: str | None = None
+-    recommendations_summary: str | None = None
+-    limitations: str | None = None
+-    generated_by: str | None = None
+-    ai_generated: bool | None = None
+-    version: int | None = None
+-    status: str | None = None
+-
+-
+-class ReportResponse(BaseModel):
+-    model_config = ConfigDict(from_attributes=True)
+-
+-    id: int
+-    assessment_id: int
+-    report_type: str
+-    report_title: str
+-    report_content: str
+-    executive_summary: str | None
+-    recommendations_summary: str | None
+-    limitations: str | None
+-    generated_by: str | None
+-    ai_generated: bool
+-    version: int
+-    status: str
+-    generated_at: datetime
+-    created_by: int | None
+-    updated_at: datetime
+\ No newline at end of file
++from datetime import datetime
++
++from pydantic import BaseModel, ConfigDict
++
++
++class ReportCreate(BaseModel):
++    report_type: str
++    report_title: str
++    report_content: str
++    executive_summary: str | None = None
++    recommendations_summary: str | None = None
++    limitations: str | None = None
++    generated_by: str | None = None
++    ai_generated: bool = False
++    version: int = 1
++    status: str = "draft"
++
++
++class ReportUpdate(BaseModel):
++    report_type: str | None = None
++    report_title: str | None = None
++    report_content: str | None = None
++    executive_summary: str | None = None
++    recommendations_summary: str | None = None
++    limitations: str | None = None
++    generated_by: str | None = None
++    ai_generated: bool | None = None
++    version: int | None = None
++    status: str | None = None
++
++
++class ReportResponse(BaseModel):
++    model_config = ConfigDict(from_attributes=True)
++
++    id: int
++    assessment_id: int
++    report_type: str
++    report_title: str
++    report_content: str
++    executive_summary: str | None
++    recommendations_summary: str | None
++    limitations: str | None
++    generated_by: str | None
++    ai_generated: bool
++    version: int
++    status: str
++    generated_at: datetime
++    created_by: int | None
++    updated_at: datetime
++    clinician_id: int | None = None
++    clinician_guidance: str | None = None
++    clinician_review_status: str | None = None
++    clinician_reviewed_at: datetime | None = None
++    released_to_patient: bool = False
++    patient_reviewed_at: datetime | None = None
++    last_viewed_at: datetime | None = None
