@@ -1,0 +1,358 @@
+/*
+ * CareSphere — electronics-inspired visual system
+ * Additive UI layer: keeps routes, API calls, permissions and workflow logic unchanged.
+ */
+:root {
+  --cs-ink: #101b33;
+  --cs-ink-strong: #0b1730;
+  --cs-muted: #5f6f89;
+  --cs-border: #e2e8f2;
+  --cs-surface: #ffffff;
+  --cs-teal: #0891b2;
+  --cs-teal-dark: #0e7490;
+  --cs-cyan: #22d3ee;
+  --cs-amber: #f59e0b;
+  --cs-rose: #e11d48;
+  --cs-blue: #2563eb;
+  --cs-blue-dark: #1d4ed8;
+  --cs-shadow: 0 22px 60px rgba(16, 27, 51, .09);
+  --cs-shadow-soft: 0 8px 26px rgba(16, 27, 51, .055);
+  --cs-focus: 0 0 0 4px rgba(37, 99, 235, .16);
+}
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  color: var(--cs-ink);
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(34, 211, 238, .10), transparent 26%),
+    radial-gradient(ellipse at 100% 8%, rgba(37, 99, 235, .075), transparent 27%),
+    #f5f7fb;
+}
+
+::selection { background: rgba(34, 211, 238, .28); color: #101b33; }
+
+/* Application shell and navigation */
+.care-app-shell {
+  background:
+    radial-gradient(ellipse at 80% 0%, rgba(34, 211, 238, .065), transparent 24%),
+    #f5f7fb !important;
+}
+
+.care-sidebar {
+  background: linear-gradient(180deg, #0b1220 0%, #111d38 54%, #102b4e 100%) !important;
+  border-right: 1px solid rgba(255,255,255,.075);
+  box-shadow: 14px 0 38px rgba(11, 18, 32, .15) !important;
+}
+
+.care-brand-mark, .care-login-mark {
+  background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%) !important;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, .28) !important;
+}
+
+.care-brand-caption { color: rgba(226, 239, 255, .58) !important; }
+
+.care-nav-link {
+  border: 1px solid transparent;
+  border-radius: 12px !important;
+  color: #c2cde0 !important;
+  transition: background .18s ease, color .18s ease, transform .18s ease, border-color .18s ease !important;
+}
+.care-nav-link:hover {
+  color: #fff !important;
+  background: rgba(255,255,255,.075) !important;
+  border-color: rgba(148, 190, 255, .12);
+}
+.care-nav-link.is-active {
+  color: #fff !important;
+  background: linear-gradient(110deg, rgba(37,99,235,.30), rgba(6,182,212,.14)) !important;
+  border-color: rgba(96, 165, 250, .22);
+  box-shadow: inset 3px 0 0 #22d3ee, 0 8px 24px rgba(0,0,0,.10) !important;
+}
+.care-nav-link::before { background: linear-gradient(180deg, #22d3ee, #60a5fa) !important; }
+.care-nav-icon { background: rgba(255,255,255,.07) !important; }
+.care-nav-link.is-active .care-nav-icon {
+  color: #a5f3fc !important;
+  background: rgba(34, 211, 238, .13) !important;
+}
+.care-nav-label { color: #93a4bd !important; }
+.care-sidebar-footer {
+  background: rgba(255,255,255,.055) !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+.care-sidebar-footer-icon {
+  color: #a5f3fc !important;
+  background: rgba(34,211,238,.12) !important;
+}
+
+.care-topbar {
+  background: rgba(255,255,255,.88) !important;
+  border-bottom: 1px solid rgba(219, 228, 241, .85);
+  box-shadow: 0 7px 24px rgba(16,27,51,.035) !important;
+  backdrop-filter: blur(18px);
+}
+.care-topbar-title { color: #101b33 !important; }
+.care-topbar-subtitle { color: #6c7c95 !important; }
+.care-mobile-menu {
+  border-color: #dce5f2 !important;
+  box-shadow: 0 3px 10px rgba(16,27,51,.04);
+}
+.care-mobile-menu:hover { border-color: #93c5fd !important; color: #1d4ed8 !important; }
+.care-nav-scrim.is-visible { background: rgba(8, 17, 36, .52) !important; }
+
+/* Consistent surfaces, page headings and metric cards */
+.care-content {
+  background: transparent !important;
+}
+.care-content::before {
+  background: radial-gradient(circle, rgba(37,99,235,.07), transparent 70%) !important;
+}
+.care-panel, .care-metric-card, .care-quick-card, .care-account-stat,
+.care-analytics-metric, .care-workspace-pulse, .care-workspace-pulse-card,
+.care-list-card, .care-notification, .care-profile-card, .care-profile-summary,
+.care-user-profile-drawer, .care-command-dialog {
+  border-color: #e2e8f2 !important;
+  box-shadow: var(--cs-shadow-soft) !important;
+}
+.care-panel {
+  border-radius: 18px !important;
+  background: rgba(255,255,255,.96) !important;
+}
+.care-metric-card, .care-account-stat, .care-analytics-metric {
+  background: linear-gradient(145deg, #fff 0%, #f8fbff 100%) !important;
+}
+.care-metric-card:hover, .care-profile-card:hover, .care-profile-summary:hover {
+  border-color: rgba(37,99,235,.26) !important;
+  box-shadow: 0 18px 42px rgba(16,27,51,.10) !important;
+}
+.care-metric-icon {
+  color: #1d4ed8 !important;
+  background: #eaf1ff !important;
+}
+.care-metric-card-blue .care-metric-icon { color: #0369a1 !important; background: #e0f2fe !important; }
+.care-metric-card-amber .care-metric-icon { color: #a16207 !important; background: #fef3c7 !important; }
+.care-metric-card-rose .care-metric-icon { color: #be123c !important; background: #ffe4e6 !important; }
+.care-metric-label { color: #5f6f89 !important; }
+.care-metric-value, .care-page-title, .care-section-heading h2,
+.care-filter-heading h2, .care-dashboard-title, .care-workspace-title {
+  color: #0b1730 !important;
+}
+.care-metric-helper { color: #667892 !important; }
+.care-page-icon, .care-quick-icon, .care-workspace-icon {
+  color: #1d4ed8 !important;
+  background: linear-gradient(135deg, #e8f0ff, #dffaff) !important;
+  border-color: #d9e7ff !important;
+  box-shadow: 0 8px 22px rgba(37,99,235,.08) !important;
+}
+.care-eyebrow, .care-section-kicker { color: #0369a1 !important; }
+.care-page-description, .care-workspace-description { color: #5f6f89 !important; }
+
+/* Dashboard hero and shortcuts */
+.care-dashboard-hero {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(34,211,238,.20), transparent 32%),
+    radial-gradient(circle at 0% 100%, rgba(37,99,235,.12), transparent 38%),
+    linear-gradient(125deg, #fff 0%, #f1f7ff 54%, #effcff 100%) !important;
+  border-color: #dbeafe !important;
+  box-shadow: 0 20px 50px rgba(37,99,235,.075) !important;
+}
+.care-dashboard-hero-badge, .care-workspace-status {
+  color: #075985 !important;
+  border-color: #dbeafe !important;
+}
+.care-dashboard-hero-dot { background: #06b6d4 !important; }
+.care-quick-card {
+  background: linear-gradient(145deg, #fff, #f8fbff) !important;
+}
+.care-quick-card:hover {
+  border-color: rgba(37,99,235,.28) !important;
+  box-shadow: 0 16px 34px rgba(37,99,235,.10) !important;
+}
+.care-quick-copy strong { color: #14213d !important; }
+.care-quick-copy span { color: #64748b !important; }
+.care-quick-arrow { color: #2563eb !important; }
+.care-account-stat::before { background: linear-gradient(180deg, #2563eb, #22d3ee) !important; }
+.care-account-stat-positive::before { background: linear-gradient(180deg, #059669, #34d399) !important; }
+.care-account-stat-info::before { background: linear-gradient(180deg, #0284c7, #38bdf8) !important; }
+
+/* Buttons: clear primary / secondary hierarchy */
+.care-search-button, .care-command-primary {
+  color: #fff !important;
+  background: linear-gradient(115deg, #1d4ed8, #0891b2) !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 8px 20px rgba(37,99,235,.20) !important;
+}
+.care-search-button:hover, .care-command-primary:hover {
+  filter: brightness(1.045);
+  box-shadow: 0 11px 25px rgba(37,99,235,.25) !important;
+}
+.care-ghost-button, .care-icon-button, .care-command-secondary,
+.care-command-close, .care-command-clear, .care-workspace-link {
+  border-color: #dbe4f0 !important;
+  color: #334766 !important;
+  background: #fff !important;
+}
+.care-ghost-button:hover, .care-icon-button:hover, .care-workspace-link:hover {
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+  background: #f7faff !important;
+}
+.care-command-launcher {
+  border-color: #dbe4f0 !important;
+  background: #f8faff !important;
+  color: #42536e !important;
+}
+.care-command-launcher:hover {
+  border-color: #93c5fd !important;
+  background: #eff6ff !important;
+}
+
+/* Forms and focus states */
+input:not([type="checkbox"]):not([type="radio"]),
+select, textarea, .care-input,
+.care-selector-shell, .care-selector-search {
+  border-color: #d5deeb;
+}
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus, textarea:focus, .care-input:focus,
+.care-selector-shell:focus-within, .care-selector-search:focus-within {
+  outline: none !important;
+  border-color: #3b82f6 !important;
+  box-shadow: var(--cs-focus) !important;
+}
+.care-input, .care-selector-shell, .care-selector-search {
+  border-radius: 12px !important;
+  background: #fff !important;
+}
+.care-selector-shell select, .care-selector-search input {
+  box-shadow: none !important;
+}
+.care-field-label { color: #435574 !important; }
+.care-selector-shell { color: #0369a1 !important; }
+.care-inline-loader { border-top-color: #2563eb !important; }
+
+/* Data tables: readable headings, calmer rows, clear hover */
+.care-audit-table-wrap, .care-content table[style] {
+  border-color: #e0e7f1;
+  border-radius: 14px;
+}
+.care-audit-table th {
+  color: #42536e !important;
+  background: #f1f5fb !important;
+  border-bottom-color: #dfe7f2 !important;
+}
+.care-audit-table td { color: #40516d !important; }
+.care-audit-table tbody tr:hover { background: #f1f7ff !important; }
+.care-content table tbody tr:hover { background-color: #f3f8ff; }
+.care-table-person { min-width: 170px; }
+
+/* Status labels retain familiar meanings but use stronger contrast */
+.care-status-success { color: #047857 !important; background: #d1fae5 !important; }
+.care-status-warning { color: #92400e !important; background: #fef3c7 !important; }
+.care-status-danger { color: #9f1239 !important; background: #ffe4e6 !important; }
+.care-status-info { color: #1e40af !important; background: #dbeafe !important; }
+.care-status-neutral { color: #42536e !important; background: #edf2f7 !important; }
+.care-alert-danger { color: #9f1239 !important; background: #fff1f2 !important; border-color: #fecdd3 !important; }
+
+/* Profile, empty states, modals and search overlays */
+.care-profile-hero {
+  background: linear-gradient(125deg, #eff6ff 0%, #fff 54%, #ecfeff 100%) !important;
+  border-color: #dbeafe !important;
+}
+.care-profile-avatar, .care-user-avatar {
+  background: linear-gradient(135deg, #1d4ed8, #0891b2) !important;
+}
+.care-profile-chip, .care-account-chip {
+  color: #1e40af !important;
+  background: #eff6ff !important;
+  border-color: #dbeafe !important;
+}
+.care-profile-summary::before { background: linear-gradient(180deg, #2563eb, #06b6d4) !important; }
+.care-profile-summary-icon { color: #1d4ed8 !important; background: #eaf1ff !important; }
+.care-empty-hero, .care-empty-state {
+  border-color: #bfdbfe !important;
+  background: linear-gradient(125deg, #f0f7ff, #f0fdff) !important;
+}
+.care-empty-icon { color: #1d4ed8 !important; }
+.care-list-icon { color: #1d4ed8 !important; background: #eaf1ff !important; }
+.care-notification.is-unread {
+  border-color: #bfdbfe !important;
+  background: linear-gradient(120deg, #fff, #f2f8ff) !important;
+}
+.care-notification.is-unread::before { background: #2563eb !important; box-shadow: 0 0 0 4px rgba(37,99,235,.12) !important; }
+.care-modal-backdrop { background: rgba(8, 17, 36, .54) !important; }
+.care-modal, .care-command-dialog {
+  border-color: rgba(219,234,254,.85) !important;
+  box-shadow: 0 30px 85px rgba(8,17,36,.24) !important;
+}
+.care-command-result:hover, .care-command-result.is-selected {
+  border-color: #93c5fd !important;
+  background: #eff6ff !important;
+}
+.care-command-arrow { color: #2563eb !important; }
+
+/* Login screen hooks added by the patch script */
+.care-login-page {
+  background:
+    radial-gradient(circle at 12% 12%, rgba(34,211,238,.22), transparent 28%),
+    radial-gradient(circle at 90% 90%, rgba(37,99,235,.18), transparent 30%),
+    linear-gradient(135deg, #0b1220, #14264a 60%, #0e3a56) !important;
+}
+.care-login-card {
+  border: 1px solid rgba(219,234,254,.7) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 30px 90px rgba(3, 10, 28, .26) !important;
+}
+.care-login-card h1 { color: #101b33 !important; }
+.care-login-card p { color: #5f6f89 !important; }
+.care-login-card form input {
+  border: 1px solid #d5deeb !important;
+  border-radius: 12px !important;
+  background: #fbfdff !important;
+}
+.care-login-card form input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: var(--cs-focus) !important;
+}
+.care-login-card form > button[type="submit"] {
+  border: 0 !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+  background: linear-gradient(115deg, #1d4ed8, #0891b2) !important;
+  box-shadow: 0 10px 22px rgba(37,99,235,.20) !important;
+}
+.care-login-card form > button[type="submit"]:hover { filter: brightness(1.05); }
+.care-login-card .care-role-grid > button,
+.care-login-card [style*="grid-template-columns"] > button {
+  border-radius: 14px !important;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease !important;
+}
+.care-login-card button:focus-visible,
+.care-content button:focus-visible,
+.care-content a:focus-visible {
+  outline: 3px solid rgba(37,99,235,.32) !important;
+  outline-offset: 2px !important;
+}
+
+/* Mobile layouts and motion accessibility */
+@media (max-width: 720px) {
+  .care-panel { padding: 16px !important; border-radius: 16px !important; }
+  .care-page-header { gap: 14px !important; }
+  .care-page-actions { width: 100%; }
+  .care-page-actions button { max-width: 100%; }
+  .care-topbar-tools { min-width: 0; }
+  .care-command-launcher { max-width: 42px; overflow: hidden; padding-inline: 12px !important; }
+  .care-command-launcher > span:not(:first-child), .care-command-launcher kbd { display: none; }
+  .care-list-card, .care-notification { padding: 13px !important; }
+  .care-filter-grid { gap: 10px !important; }
+}
+@media (max-width: 420px) {
+  .care-page-title { font-size: 25px !important; }
+  .care-metric-value { font-size: 28px !important; }
+  .care-dashboard-hero { padding: 17px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
